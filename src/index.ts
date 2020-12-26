@@ -51,9 +51,9 @@ const glProgram = makeProgram(gl, {
   `
 })
 
-const radius = 5
+const radius = 50
 
-const vertexArray = new Float32Array([-radius, radius, radius, radius, radius, -radius, -radius, radius, radius, -radius, -radius, -radius])
+const vertexArray = new Float32Array([-radius / 2, radius / 2, radius / 2, radius / 2, radius / 2, -radius / 2, -radius / 2, radius / 2, radius / 2, -radius / 2, -radius / 2, -radius / 2])
 const uvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 const offsetsArray = new Float32Array(PARTICLE_COUNT * 2)
 const velocitiesArray = new Float32Array(PARTICLE_COUNT * 2)
@@ -93,13 +93,12 @@ instanceExtension.vertexAttribDivisorANGLE(a_offset, 1)
 
 const projectionMatrix = orthographic({
   left: 0,
-  right: innerWidth,
-  bottom: innerHeight,
+  right: innerWidth / 2,
+  bottom: innerHeight / 2,
   top: 0,
   near: 1,
   far: -1,
 })
-
 gl.useProgram(glProgram)
 const u_projectionMatrix = gl.getUniformLocation(glProgram, 'u_projectionMatrix')
 gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
@@ -134,16 +133,16 @@ function renderFrame(ts) {
     offsetsArray[i * 2] += velocitiesArray[i * 2]
     offsetsArray[i * 2 + 1] += velocitiesArray[i * 2 + 1]
 
-    if (offsetsArray[i * 2] - radius < 0) {
-      offsetsArray[i * 2] = radius
+    if (offsetsArray[i * 2] - radius / 2 < 0) {
+      offsetsArray[i * 2] = radius / 2
       velocitiesArray[i * 2] *= -1 * BOUNCE_SCALE
-    } else if (offsetsArray[i * 2] + radius > innerWidth) {
-      offsetsArray[i * 2] = innerWidth - radius
+    } else if (offsetsArray[i * 2] + radius / 2 > innerWidth) {
+      offsetsArray[i * 2] = innerWidth - radius / 2
       velocitiesArray[i * 2] *= -1 * BOUNCE_SCALE
     }
 
-    if (offsetsArray[i * 2 + 1] + radius > canvas.height) {
-      offsetsArray[i * 2 + 1] = canvas.height - radius
+    if (offsetsArray[i * 2 + 1] + radius / 2 > canvas.height) {
+      offsetsArray[i * 2 + 1] = canvas.height - radius / 2
       velocitiesArray[i * 2 + 1] *= -1 * BOUNCE_SCALE
     }
   }
