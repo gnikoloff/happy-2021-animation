@@ -6,7 +6,12 @@ import {
   orthographic,
 } from './helpers'
 
-const PARTICLE_COUNT = 50
+import PhysicsWorker from 'web-worker:./physics-worker'
+
+const worker = new PhysicsWorker()
+
+
+const PARTICLE_COUNT = 5000
 const BOUNCE_SCALE = 0.8
 const GRAVITY = 2
 
@@ -55,8 +60,9 @@ const radius = 50
 
 const vertexArray = new Float32Array([-radius / 2, radius / 2, radius / 2, radius / 2, radius / 2, -radius / 2, -radius / 2, radius / 2, radius / 2, -radius / 2, -radius / 2, -radius / 2])
 const uvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
-const offsetsArray = new Float32Array(PARTICLE_COUNT * 2)
-const velocitiesArray = new Float32Array(PARTICLE_COUNT * 2)
+
+let offsetsArray = new Float32Array(PARTICLE_COUNT * 2)
+let velocitiesArray = new Float32Array(PARTICLE_COUNT * 2)
 
 for (let i = 0; i < PARTICLE_COUNT; i++) {
   const randX = Math.random() * innerWidth
@@ -111,12 +117,37 @@ function init() {
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
-  gl.enable(gl.BLEND)
-  gl.disable(gl.DEPTH_TEST)
+  gl.useProgram(glProgram)
+
+  // gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
+  // gl.enable(gl.BLEND)
+  // gl.disable(gl.DEPTH_TEST)
+
+  worker.postMessage({
+    type: 'init',
+    innerWidth,
+    innerHeight,
+    radius,
+    particleCount: PARTICLE_COUNT,
+    gravity: GRAVITY,
+    bounceScale: BOUNCE_SCALE,
+  })
 
   requestAnimationFrame(renderFrame)
 }
+
+
+worker.onmessage = e => {
+  const { velocitiesArray: newVelocitiesArray, offsetsArray: newOffsetsArray } = e.data
+
+  velocitiesArray = newVelocitiesArray
+  offsetsArray = newOffsetsArray
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+}
+
+
 
 function renderFrame(ts) {
   const dt = ts - oldTime
@@ -125,31 +156,16 @@ function renderFrame(ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
-  gl.useProgram(glProgram)
-
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    velocitiesArray[i * 2 + 1] += GRAVITY
-
-    offsetsArray[i * 2] += velocitiesArray[i * 2]
-    offsetsArray[i * 2 + 1] += velocitiesArray[i * 2 + 1]
-
-    if (offsetsArray[i * 2] - radius / 2 < 0) {
-      offsetsArray[i * 2] = radius / 2
-      velocitiesArray[i * 2] *= -1 * BOUNCE_SCALE
-    } else if (offsetsArray[i * 2] + radius / 2 > innerWidth) {
-      offsetsArray[i * 2] = innerWidth - radius / 2
-      velocitiesArray[i * 2] *= -1 * BOUNCE_SCALE
-    }
-
-    if (offsetsArray[i * 2 + 1] + radius / 2 > canvas.height) {
-      offsetsArray[i * 2 + 1] = canvas.height - radius / 2
-      velocitiesArray[i * 2 + 1] *= -1 * BOUNCE_SCALE
-    }
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
   instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, PARTICLE_COUNT)
+
+
+  if (velocitiesArray.buffer.byteLength && offsetsArray.buffer.byteLength) {
+    worker.postMessage({
+      type: 'update-world',
+      velocitiesArray,
+      offsetsArray,
+    }, [velocitiesArray.buffer, offsetsArray.buffer])
+  }
 
   requestAnimationFrame(renderFrame)
 }
