@@ -34,7 +34,6 @@
     "webgl-lint": "^1.8.0"
   },
   "dependencies": {
-    "express": "^4.17.1",
-    "gl-matrix": "^3.3.0"
+    "express": "^4.17.1"
   }
 }

@@ -51,3 +51,24 @@ export function getExtension(gl: WebGLRenderingContext, extensionName: string) {
   }
   return extension
 }
+
+interface OrthographicProjectionOptions {
+  left: number,
+  right: number,
+  bottom: number,
+  top: number,
+  near: number,
+  far: number,
+}
+export function orthographic({ left, right, bottom, top, near, far }: OrthographicProjectionOptions): Float32Array {
+  return new Float32Array([
+    2 / (right - left), 0, 0, 0,
+    0, 2 / (top - bottom), 0, 0,
+    0, 0, 2 / (near - far), 0,
+
+    (left + right) / (left - right),
+    (bottom + top) / (bottom - top),
+    (near + far) / (near - far),
+    1,
+  ])
+}

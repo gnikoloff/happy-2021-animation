@@ -1,9 +1,9 @@
 import 'webgl-lint.js'
-import { mat4 } from 'gl-matrix'
 
 import {
   makeProgram,
   getExtension,
+  orthographic,
 } from './helpers'
 
 const PARTICLE_COUNT = 50
@@ -51,7 +51,7 @@ const glProgram = makeProgram(gl, {
   `
 })
 
-const radius = 50
+const radius = 5
 
 const vertexArray = new Float32Array([-radius, radius, radius, radius, radius, -radius, -radius, radius, radius, -radius, -radius, -radius])
 const uvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
@@ -91,10 +91,14 @@ gl.enableVertexAttribArray(a_offset)
 gl.vertexAttribPointer(a_offset, 2, gl.FLOAT, false, 0, 0)
 instanceExtension.vertexAttribDivisorANGLE(a_offset, 1)
 
-const aspect = innerWidth / innerHeight
-const projectionMatrix = mat4.create()
-mat4.ortho(projectionMatrix, 0, innerWidth / 2, innerHeight / 2, 0, 1, -1)
-console.log(projectionMatrix)
+const projectionMatrix = orthographic({
+  left: 0,
+  right: innerWidth,
+  bottom: innerHeight,
+  top: 0,
+  near: 1,
+  far: -1,
+})
 
 gl.useProgram(glProgram)
 const u_projectionMatrix = gl.getUniformLocation(glProgram, 'u_projectionMatrix')
@@ -106,7 +110,7 @@ function init() {
   resizeCanvas()
   document.body.addEventListener('resize', resizeCanvas)
 
-  gl.viewport(0, 0, canvas.width, innerHeight)
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
   gl.enable(gl.BLEND)
