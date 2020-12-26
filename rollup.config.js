@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript'
 import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
+import webWorkerLoader from 'rollup-plugin-web-worker-loader'
 
 export default {
   input: 'src/index.ts',
@@ -11,6 +12,7 @@ export default {
   plugins: [
     resolve(),
     commonjs(),
-    typescript()
+    typescript(),
+    webWorkerLoader(/* configuration */)
   ]
 }
