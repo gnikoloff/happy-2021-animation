@@ -11,13 +11,56 @@
       margin: 0;
       padding: 0;
     }
+
+    button:focus {
+      outline: 0;
+    }
+
+    button:hover {
+      cursor: pointer;
+    }
+
+    .thread-options {
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .thread-options button {
+      padding: 8px 10px;
+      background: rgb(26, 26, 26);
+      color: #fff;
+      border: none;
+      transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
+    }
+
+    .thread-options button.active {
+      background: #fff;
+      color: #111;
+    }
+
+    .thread-options button.active:first-of-type {
+      border-right: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .thread-options button:first-of-type {
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+    }
   </style>
 
 </head>
 
 <body>
 
-  <div id="app-container"></div>
+  <div class="thread-options">
+    <button data-option="main-thread">Main Thread</button>
+    <button class="active" data-option="worker-thread">Worker Thread</button>
+  </div>
+
+  <div id="canvas-container"></div>
 
   <script src="/bundle.js"></script>
 
