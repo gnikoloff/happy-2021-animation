@@ -15,12 +15,14 @@ onmessage = function(e) {
     const {
       velocitiesArray,
       offsetsArray,
+      oldOffsetsArray,
     } = calculatePhysics(e.data, globalState)
-    
+
     postMessage({
       type: EVT_UPDATED_WORLD,
       velocitiesArray,
-      offsetsArray
-    }, velocitiesArray.buffer, offsetsArray.buffer)
+      offsetsArray,
+      oldOffsetsArray
+    }, velocitiesArray.buffer, offsetsArray.buffer, oldOffsetsArray.buffer)
   }
 }

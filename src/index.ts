@@ -11,7 +11,7 @@ import calculatePhysics from './calculate-physics'
 import vertexShaderSource from './shader.vert'
 import fragmentShaderSource from './shader.frag'
 
-// import PhysicsWorker from 'web-worker:./physics-worker'
+import PhysicsWorker from 'web-worker:./physics-worker'
 
 import {
   EVT_INIT_WORLD,
@@ -23,9 +23,9 @@ const GLOBAL_STATE = {
   innerWidth,
   innerHeight,
   radius: 10,
-  particleCount: 5000,
+  particleCount: 2000,
   bounceScale: 0.8,
-  gravity: 2,
+  gravity: 0.9,
   useWorker: false,
 }
 
@@ -34,34 +34,34 @@ const appContainer = document.getElementById('canvas-container')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl')
 const instanceExtension = getExtension(gl, 'ANGLE_instanced_arrays')
-// const worker = new PhysicsWorker()
+const worker = new PhysicsWorker()
 const glProgram = makeProgram(gl, {
   vertexShaderSource,
   fragmentShaderSource,
 })
 
-const vertexArray = new Float32Array([-GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2])
+const ballVertexArray = new Float32Array([-GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2])
 const uvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 
-let offsetsArray
-let velocitiesArray
+let ballOffsetsArray
+let ballVelocitiesArray
 let oldTime = 0
 
-offsetsArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
-velocitiesArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
+ballOffsetsArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
+ballVelocitiesArray = new Float32Array(GLOBAL_STATE.particleCount * 2).fill(0)
 
 for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
   const randX = Math.random() * GLOBAL_STATE.innerWidth
-  const randY = Math.random() * GLOBAL_STATE.innerHeight
-  offsetsArray[i * 2] = randX
-  offsetsArray[i * 2 + 1] = randY
+  const randY = Math.random() * -GLOBAL_STATE.innerHeight
+  ballOffsetsArray[i * 2 + 0] = randX
+  ballOffsetsArray[i * 2 + 1] = randY
 
-  velocitiesArray[i * 2] = (Math.random() * 2 - 1) * 10
-  velocitiesArray[i * 2 + 1] = Math.random() * 3 + 1
+  ballVelocitiesArray[i * 2] = (Math.random() * 2 - 1) * 10
+  ballVelocitiesArray[i * 2 + 1] = Math.random() * 3 + 1
 }
 
 setupWebGLAttributeWithBuffer({
-  typedArray: vertexArray,
+  typedArray: ballVertexArray,
   attributeName: 'a_position',
   countPerVertex: 2
 })
@@ -73,7 +73,7 @@ setupWebGLAttributeWithBuffer({
 })
 
 const offsetsBuffer = setupWebGLAttributeWithBuffer({
-  typedArray: offsetsArray,
+  typedArray: ballOffsetsArray,
   attributeName: 'a_offset',
   countPerVertex: 2,
   instancedDivisor: 1,
@@ -90,6 +90,9 @@ function init() {
   document.body.addEventListener('resize', resizeCanvas)
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+  gl.enable(gl.BLEND)
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
   gl.useProgram(glProgram)
 
   const projectionMatrix = orthographic({
@@ -103,17 +106,17 @@ function init() {
   const u_projectionMatrix = gl.getUniformLocation(glProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
 
-  // worker.postMessage({
-  //   type: EVT_INIT_WORLD,
-  //   innerWidth: GLOBAL_STATE.innerWidth,
-  //   innerHeight: GLOBAL_STATE.innerHeight,
-  //   radius: GLOBAL_STATE.radius,
-  //   particleCount: GLOBAL_STATE.particleCount,
-  //   bounceScale: GLOBAL_STATE.bounceScale,
-  //   gravity: GLOBAL_STATE.gravity,
-  // })
+  worker.postMessage({
+    type: EVT_INIT_WORLD,
+    innerWidth: GLOBAL_STATE.innerWidth,
+    innerHeight: GLOBAL_STATE.innerHeight,
+    radius: GLOBAL_STATE.radius,
+    particlesCount: GLOBAL_STATE.particleCount,
+    bounceScale: GLOBAL_STATE.bounceScale,
+    gravity: GLOBAL_STATE.gravity,
+  })
 
-  // worker.onmessage = onWorkerMessage
+  worker.onmessage = onWorkerMessage
   requestAnimationFrame(renderFrame)
 }
 
@@ -123,15 +126,16 @@ function onWorkerMessage(e) {
   }
   if (e.data.type === EVT_UPDATED_WORLD) {
     const {
-      velocitiesArray: newVelocitiesArray,
-      offsetsArray: newOffsetsArray,
+      ballVelocitiesArray: newVelocitiesArray,
+      ballOffsetsArray: newOffsetsArray,
     } = e.data
 
-    velocitiesArray = newVelocitiesArray
-    offsetsArray = newOffsetsArray
+    ballVelocitiesArray = newVelocitiesArray
+    ballOffsetsArray = newOffsetsArray
 
     gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+    gl.bufferData(gl.ARRAY_BUFFER, ballOffsetsArray, gl.DYNAMIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
   }
 }
 
@@ -145,30 +149,37 @@ function renderFrame(ts) {
   instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
 
   if (GLOBAL_STATE.useWorker) {
-    if (velocitiesArray.buffer.byteLength && offsetsArray.buffer.byteLength) {
-      // worker.postMessage({
-      //   type: EVT_REQUEST_UPDATE_WORLD,
-      //   velocitiesArray,
-      //   offsetsArray,
-      // }, [velocitiesArray.buffer, offsetsArray.buffer])
+    if (ballVelocitiesArray.buffer.byteLength && ballOffsetsArray.buffer.byteLength) {
+      worker.postMessage({
+        type: EVT_REQUEST_UPDATE_WORLD,
+        velocitiesArray: ballVelocitiesArray,
+        offsetsArray: ballOffsetsArray,
+      }, [
+        ballVelocitiesArray.buffer,
+        ballOffsetsArray.buffer,
+      ])
     }
   } else {
-    const physicsResult = calculatePhysics({
-      velocitiesArray,
-      offsetsArray,
+    const {
+      velocitiesArray: newVelocitiesArray,
+      offsetsArray: newOffsetsArray,
+    } = calculatePhysics({
+      velocitiesArray: ballVelocitiesArray,
+      offsetsArray: ballOffsetsArray,
     }, {
       innerWidth: GLOBAL_STATE.innerWidth,
       innerHeight: GLOBAL_STATE.innerHeight,
       radius: GLOBAL_STATE.radius,
-      particleCount: GLOBAL_STATE.particleCount,
+      particlesCount: GLOBAL_STATE.particleCount,
       bounceScale: GLOBAL_STATE.bounceScale,
       gravity: GLOBAL_STATE.gravity,
     })
-    velocitiesArray = physicsResult.velocitiesArray
-    offsetsArray = physicsResult.offsetsArray
+
+    ballVelocitiesArray = newVelocitiesArray
+    ballOffsetsArray = newOffsetsArray
 
     gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+    gl.bufferData(gl.ARRAY_BUFFER, ballOffsetsArray, gl.DYNAMIC_DRAW)
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
   }
 
