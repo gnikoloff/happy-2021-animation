@@ -16,8 +16,10 @@ const GLOBAL_STATE = {
   particleCount: 100,
   linesCount: 3,
   lineWidth: 300,
+  linesSpring: 0.7,
   bounceScale: 0.8,
-  gravity: 0.005
+  gravity: 0.05,
+  animationSwitchTimeout: 6000,
 }
 
 const appContainer = document.getElementById('canvas-container')
@@ -32,6 +34,7 @@ const vaoExtension = gl.getExtension('OES_vertex_array_object')
 let u_targetTexture
 let u_textTexture
 let oldTime = 0
+let animationSwitchCounter = 0
 
 // ------- Fullscreen quad program and geometry -------
 const planeProgram = makeProgram(gl, {
@@ -79,29 +82,30 @@ const linesProgram = makeProgram(gl, {
 const linesVertexArray = new Float32Array([0, 0, GLOBAL_STATE.lineWidth, 0])
 const linesOffsetsArray = new Float32Array(GLOBAL_STATE.linesCount * 2)
 const linesRotationsArray = new Float32Array(GLOBAL_STATE.linesCount)
-for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
 
-  const maxLineOccupyHeight = innerHeight * 0.75
+const linesOffsetsTargetsArray = new Float32Array(GLOBAL_STATE.linesCount * 2)
+const linesRotationsTargetsArray = new Float32Array(GLOBAL_STATE.linesCount)
+const linesVelocitiesArray = new Float32Array(GLOBAL_STATE.linesCount).fill(0)
+const linesRotationVelocitiesArray = new Float32Array(GLOBAL_STATE.linesCount).fill(0)
 
-  const lineStepY = maxLineOccupyHeight / GLOBAL_STATE.linesCount
+const maxLineOccupyHeight = innerHeight * 0.75
+const lineStepY = maxLineOccupyHeight / GLOBAL_STATE.linesCount
 
-  let angle
-  if (i === 0) {
-    linesOffsetsArray[i * 2 + 0] = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-    linesOffsetsArray[i * 2 + 1] = lineStepY
-    angle = 15
-  } else if (i === 1) {
-    linesOffsetsArray[i * 2 + 0] = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-    linesOffsetsArray[i * 2 + 1] = lineStepY * 2
-    angle = -15
-  } else if (i === 2) {
-    linesOffsetsArray[i * 2 + 0] = innerWidth / 2 - innerWidth / 8 - GLOBAL_STATE.lineWidth / 2
-    linesOffsetsArray[i * 2 + 1] = lineStepY * 3
-    angle = 15
-  }
-
-  linesRotationsArray[i] = angle * Math.PI / 180
-}
+const offsetXLine1 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+const offsetXLine2 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+const offsetXLine3 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+const offsetYLine1 = lineStepY
+const offsetYLine2 = lineStepY * 2
+const offsetYLine3 = lineStepY * 3
+linesOffsetsArray[0] = linesOffsetsTargetsArray[0] = offsetXLine1
+linesOffsetsArray[1] = linesOffsetsTargetsArray[1] = offsetYLine1
+linesOffsetsArray[2] = linesOffsetsTargetsArray[2] = offsetXLine2
+linesOffsetsArray[3] = linesOffsetsTargetsArray[3] = offsetYLine2
+linesOffsetsArray[4] = linesOffsetsTargetsArray[4] = offsetXLine3
+linesOffsetsArray[5] = linesOffsetsTargetsArray[5] = offsetYLine3
+linesRotationsArray[0] = linesRotationsTargetsArray[0] = 15 * Math.PI / 180
+linesRotationsArray[1] = linesRotationsTargetsArray[1] = -15 * Math.PI / 180
+linesRotationsArray[2] = linesRotationsTargetsArray[2] = 15 * Math.PI / 180
 
 // Look up lines program attributes
 const linePositionLocation = gl.getAttribLocation(linesProgram, 'a_position')
@@ -285,6 +289,38 @@ function init() {
   gl.uniform2f(u_textTextureResolution, textureCanvas.width, textureCanvas.height)
   gl.useProgram(null)
 
+  setInterval(() => {
+    let offsetXLine1
+    let offsetXLine2
+    let offsetXLine3
+    let angleLine1
+    let angleLine2
+    let angleLine3
+    if (animationSwitchCounter % 2 === 0) {
+      offsetXLine1 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      offsetXLine2 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      offsetXLine3 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      angleLine1 = -15
+      angleLine2 = 15
+      angleLine3 = -15
+    } else {
+      offsetXLine1 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      offsetXLine2 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      offsetXLine3 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
+      angleLine1 = 15
+      angleLine2 = -15
+      angleLine3 = 15
+    }
+    linesOffsetsTargetsArray[0] = offsetXLine1
+    linesOffsetsTargetsArray[2] = offsetXLine2
+    linesOffsetsTargetsArray[4] = offsetXLine3
+    linesRotationsTargetsArray[0] = angleLine1 * Math.PI / 180
+    linesRotationsTargetsArray[1] = angleLine2 * Math.PI / 180
+    linesRotationsTargetsArray[2] = angleLine3 * Math.PI / 180
+
+    animationSwitchCounter++
+  }, GLOBAL_STATE.animationSwitchTimeout)
+
   requestAnimationFrame(renderFrame)
 }
 
@@ -295,7 +331,7 @@ function renderFrame(ts) {
   }
   oldTime = ts
 
-  // ------- Update phsycis -------
+  // ------- Update balls phsycis -------
   // Check balls collisions
   for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
     for (let n = i + 1; n < GLOBAL_STATE.particleCount; n++) {
@@ -315,6 +351,23 @@ function renderFrame(ts) {
   // Update balls offsets
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+  gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+
+  for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
+    linesVelocitiesArray[i] += (linesOffsetsTargetsArray[i * 2 + 0] - linesOffsetsArray[i * 2 + 0]) * (dt * 0.1)
+    linesVelocitiesArray[i] *= GLOBAL_STATE.linesSpring
+    linesOffsetsArray[i * 2 + 0] += linesVelocitiesArray[i]
+
+
+    linesRotationVelocitiesArray[i] += (linesRotationsTargetsArray[i] - linesRotationsArray[i]) * (dt * 0.1)
+    linesRotationVelocitiesArray[i] *= GLOBAL_STATE.linesSpring
+    linesRotationsArray[i] += linesRotationVelocitiesArray[i]
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, linesOffsetsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, linesOffsetsArray, gl.STATIC_DRAW)
+  gl.bindBuffer(gl.ARRAY_BUFFER, linesRotationBuffers)
+  gl.bufferData(gl.ARRAY_BUFFER, linesRotationsArray, gl.STATIC_DRAW)
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
   // ------- Render our scene -------
