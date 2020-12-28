@@ -1,4 +1,4 @@
-import 'webgl-lint.js'
+import 'oes-vertex-attrib-array-polyfill'
 
 import {
   makeProgram,
@@ -7,11 +7,12 @@ import {
 } from './helpers'
 
 import calculatePhysics from './calculate-physics'
+import getCanvasTexture from './get-canvas-texture'
 
 import vertexShaderSource from './shader.vert'
 import fragmentShaderSource from './shader.frag'
 
-import PhysicsWorker from 'web-worker:./physics-worker'
+// import PhysicsWorker from 'web-worker:./physics-worker'
 
 import {
   EVT_INIT_WORLD,
@@ -22,8 +23,8 @@ import {
 const GLOBAL_STATE = {
   innerWidth,
   innerHeight,
-  radius: 10,
-  particleCount: 2000,
+  radius: 180,
+  particleCount: 250,
   bounceScale: 0.8,
   gravity: 0.9,
   useWorker: false,
@@ -33,52 +34,117 @@ const threadChooserWrapper = document.getElementsByClassName('thread-options')[0
 const appContainer = document.getElementById('canvas-container')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl')
+
+const webglDebugExtension = getExtension(gl, 'GMAN_debug_helper')
 const instanceExtension = getExtension(gl, 'ANGLE_instanced_arrays')
-const worker = new PhysicsWorker()
-const glProgram = makeProgram(gl, {
+const vaoExtension = getExtension(gl, 'OES_vertex_array_object')
+// const worker = new PhysicsWorker()
+
+const planeVertexArray = new Float32Array([
+  -innerWidth / 2, innerHeight / 2,
+  innerWidth / 2, innerHeight / 2,
+  innerWidth / 2, -innerHeight / 2,
+  -innerWidth / 2, innerHeight / 2,
+  innerWidth / 2, -innerHeight / 2,
+  -innerWidth / 2, -innerHeight / 2
+])
+
+const planeProgram = makeProgram(gl, {
+  vertexShaderSource: `
+    precision highp float;
+
+    uniform mat4 u_projectionMatrix;
+
+    attribute vec4 a_position;
+
+    void main () {
+      gl_Position = u_projectionMatrix * a_position;
+    }
+  `,
+  fragmentShaderSource: `
+    precision highp float;
+
+    void main () {
+      gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
+  `,
+})
+webglDebugExtension.tagObject(planeProgram, 'planeProgram')
+
+const planeVao = vaoExtension.createVertexArrayOES()
+webglDebugExtension.tagObject(planeVao, 'planeVao')
+vaoExtension.bindVertexArrayOES(planeVao)
+
+const postFXPlanePositionLocation = gl.getAttribLocation(planeProgram, 'a_position')
+const planeVertexBuffer = gl.createBuffer()
+gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, planeVertexArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(postFXPlanePositionLocation)
+gl.vertexAttribPointer(postFXPlanePositionLocation, 2, gl.FLOAT, false, 0, 0)
+
+vaoExtension.bindVertexArrayOES(null)
+
+const ballsProgram = makeProgram(gl, {
   vertexShaderSource,
   fragmentShaderSource,
 })
 
-const ballVertexArray = new Float32Array([-GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2])
-const uvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
+const ballsVertexArray = new Float32Array([-GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2, -GLOBAL_STATE.radius / 2])
+const ballsUvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 
-let ballOffsetsArray
-let ballVelocitiesArray
+let offsetsArray
+let oldOffsetsArray
+let velocitiesArray
 let oldTime = 0
 
-ballOffsetsArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
-ballVelocitiesArray = new Float32Array(GLOBAL_STATE.particleCount * 2).fill(0)
+offsetsArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
+oldOffsetsArray = new Float32Array(GLOBAL_STATE.particleCount * 2)
+velocitiesArray = new Float32Array(GLOBAL_STATE.particleCount * 2).fill(0)
 
 for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
   const randX = Math.random() * GLOBAL_STATE.innerWidth
-  const randY = Math.random() * -GLOBAL_STATE.innerHeight
-  ballOffsetsArray[i * 2 + 0] = randX
-  ballOffsetsArray[i * 2 + 1] = randY
+  const randY = Math.random() * GLOBAL_STATE.innerHeight
+  offsetsArray[i * 2 + 0] = randX
+  offsetsArray[i * 2 + 1] = randY
+  oldOffsetsArray[i * 2 + 0] = randX
+  oldOffsetsArray[i * 2 + 1] = randY
 
-  ballVelocitiesArray[i * 2] = (Math.random() * 2 - 1) * 10
-  ballVelocitiesArray[i * 2 + 1] = Math.random() * 3 + 1
+  velocitiesArray[i * 2] = (Math.random() * 2 - 1) * 100
+  velocitiesArray[i * 2 + 1] = Math.random() * 3 + 1
 }
 
-setupWebGLAttributeWithBuffer({
-  typedArray: ballVertexArray,
-  attributeName: 'a_position',
-  countPerVertex: 2
-})
+const ballsVao = vaoExtension.createVertexArrayOES()
+webglDebugExtension.tagObject(ballsVao, 'ballsVao')
 
-setupWebGLAttributeWithBuffer({
-  typedArray: uvsArray,
-  attributeName: 'a_uv',
-  countPerVertex: 2
-})
+vaoExtension.bindVertexArrayOES(ballsVao)
 
-const offsetsBuffer = setupWebGLAttributeWithBuffer({
-  typedArray: ballOffsetsArray,
-  attributeName: 'a_offset',
-  countPerVertex: 2,
-  instancedDivisor: 1,
-  drawType: gl.DYNAMIC_DRAW,
-})
+const ballsAttribsLocations = {}
+// Balls vertices
+const ballsVertexBuffer = gl.createBuffer()
+gl.bindBuffer(gl.ARRAY_BUFFER, ballsVertexBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, ballsVertexArray, gl.STATIC_DRAW)
+ballsAttribsLocations['a_position'] = gl.getAttribLocation(ballsProgram, 'a_position')
+gl.enableVertexAttribArray(ballsAttribsLocations['a_position'])
+gl.vertexAttribPointer(ballsAttribsLocations['a_position'], 2, gl.FLOAT, false, 0, 0)
+
+// Balls UVs
+const ballsUvsBuffer = gl.createBuffer()
+gl.bindBuffer(gl.ARRAY_BUFFER, ballsUvsBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, ballsUvsArray, gl.STATIC_DRAW)
+ballsAttribsLocations['a_uv'] = gl.getAttribLocation(ballsProgram, 'a_uv')
+gl.enableVertexAttribArray(ballsAttribsLocations['a_uv'])
+gl.vertexAttribPointer(ballsAttribsLocations['a_uv'], 2, gl.FLOAT, false, 0, 0)
+
+// Balls Instances Offsets
+const ballsOffsetsBuffer = gl.createBuffer()
+gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.STATIC_DRAW)
+ballsAttribsLocations['a_offset'] = gl.getAttribLocation(ballsProgram, 'a_offset')
+gl.enableVertexAttribArray(ballsAttribsLocations['a_offset'])
+gl.vertexAttribPointer(ballsAttribsLocations['a_offset'], 2, gl.FLOAT, false, 0, 0)
+instanceExtension.vertexAttribDivisorANGLE(location, 1)
+
+vaoExtension.bindVertexArrayOES(null)
 
 document.addEventListener('DOMContentLoaded', init)
 
@@ -93,7 +159,10 @@ function init() {
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-  gl.useProgram(glProgram)
+  const canvasTexture = getCanvasTexture({
+    size: 512,
+    headline: 'HAPPY 2021'
+  })
 
   const projectionMatrix = orthographic({
     left: 0,
@@ -103,41 +172,53 @@ function init() {
     near: 1,
     far: -1,
   })
-  const u_projectionMatrix = gl.getUniformLocation(glProgram, 'u_projectionMatrix')
+
+  let u_projectionMatrix
+
+  gl.useProgram(ballsProgram)
+  u_projectionMatrix = gl.getUniformLocation(ballsProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
 
-  worker.postMessage({
-    type: EVT_INIT_WORLD,
-    innerWidth: GLOBAL_STATE.innerWidth,
-    innerHeight: GLOBAL_STATE.innerHeight,
-    radius: GLOBAL_STATE.radius,
-    particlesCount: GLOBAL_STATE.particleCount,
-    bounceScale: GLOBAL_STATE.bounceScale,
-    gravity: GLOBAL_STATE.gravity,
-  })
+  gl.useProgram(planeProgram)
+  u_projectionMatrix = gl.getUniformLocation(planeProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
 
-  worker.onmessage = onWorkerMessage
+  // worker.postMessage({
+  //   type: EVT_INIT_WORLD,
+  //   innerWidth: GLOBAL_STATE.innerWidth,
+  //   innerHeight: GLOBAL_STATE.innerHeight,
+  //   radius: GLOBAL_STATE.radius,
+  //   particlesCount: GLOBAL_STATE.particleCount,
+  //   bounceScale: GLOBAL_STATE.bounceScale,
+  //   gravity: GLOBAL_STATE.gravity,
+  // })
+
+  // worker.onmessage = onWorkerMessage
   requestAnimationFrame(renderFrame)
 }
 
-function onWorkerMessage(e) {
-  if (!GLOBAL_STATE.useWorker) {
-    return
-  }
-  if (e.data.type === EVT_UPDATED_WORLD) {
-    const {
-      ballVelocitiesArray: newVelocitiesArray,
-      ballOffsetsArray: newOffsetsArray,
-    } = e.data
+// function onWorkerMessage(e) {
+//   if (!GLOBAL_STATE.useWorker) {
+//     return
+//   }
+//   if (e.data.type === EVT_UPDATED_WORLD) {
+//     const {
+//       velocitiesArray: newVelocitiesArray,
+//       offsetsArray: newOffsetsArray,
+//       oldOffsetsArray: newOldOffsetsArray,
+//     } = e.data
 
-    ballVelocitiesArray = newVelocitiesArray
-    ballOffsetsArray = newOffsetsArray
+//     velocitiesArray = newVelocitiesArray
+//     offsetsArray = newOffsetsArray
+//     oldOffsetsArray = newOldOffsetsArray
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, ballOffsetsArray, gl.DYNAMIC_DRAW)
-    gl.bindBuffer(gl.ARRAY_BUFFER, null)
-  }
-}
+//     gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
+//     gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+//     gl.bindBuffer(gl.ARRAY_BUFFER, null)
+//   }
+// }
 
 function renderFrame(ts) {
   const dt = ts - oldTime
@@ -146,26 +227,40 @@ function renderFrame(ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  vaoExtension.bindVertexArrayOES(ballsVao)
+  gl.useProgram(ballsProgram)
   instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
+  gl.useProgram(null)
+  vaoExtension.bindVertexArrayOES(null)
+
+  // vaoExtension.bindVertexArrayOES(planeVao)
+  // gl.useProgram(planeProgram)
+  // gl.drawArrays(gl.TRIANGLES, 0, 6)
+  // gl.useProgram(null)
+  // vaoExtension.bindVertexArrayOES(null)
 
   if (GLOBAL_STATE.useWorker) {
-    if (ballVelocitiesArray.buffer.byteLength && ballOffsetsArray.buffer.byteLength) {
-      worker.postMessage({
-        type: EVT_REQUEST_UPDATE_WORLD,
-        velocitiesArray: ballVelocitiesArray,
-        offsetsArray: ballOffsetsArray,
-      }, [
-        ballVelocitiesArray.buffer,
-        ballOffsetsArray.buffer,
-      ])
+    if (velocitiesArray.buffer.byteLength && offsetsArray.buffer.byteLength && oldOffsetsArray.buffer.byteLength) {
+      // worker.postMessage({
+      //   type: EVT_REQUEST_UPDATE_WORLD,
+      //   velocitiesArray,
+      //   offsetsArray,
+      //   oldOffsetsArray,
+      // }, [
+      //   velocitiesArray.buffer,
+      //   offsetsArray.buffer,
+      //   oldOffsetsArray.buffer
+      // ])
     }
   } else {
     const {
       velocitiesArray: newVelocitiesArray,
       offsetsArray: newOffsetsArray,
+      oldOffsetsArray: newOldOffsetsArray,
     } = calculatePhysics({
-      velocitiesArray: ballVelocitiesArray,
-      offsetsArray: ballOffsetsArray,
+      velocitiesArray,
+      oldOffsetsArray,
+      offsetsArray,
     }, {
       innerWidth: GLOBAL_STATE.innerWidth,
       innerHeight: GLOBAL_STATE.innerHeight,
@@ -175,12 +270,13 @@ function renderFrame(ts) {
       gravity: GLOBAL_STATE.gravity,
     })
 
-    ballVelocitiesArray = newVelocitiesArray
-    ballOffsetsArray = newOffsetsArray
+    velocitiesArray = newVelocitiesArray
+    offsetsArray = newOffsetsArray
+    oldOffsetsArray = newOldOffsetsArray
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, offsetsBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, ballOffsetsArray, gl.DYNAMIC_DRAW)
-    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+    // gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
+    // gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+    // gl.bindBuffer(gl.ARRAY_BUFFER, null)
   }
 
   requestAnimationFrame(renderFrame)
@@ -198,30 +294,6 @@ function onThreadChoose(e) {
     e.target.classList.add('active')
     GLOBAL_STATE.useWorker = option === 'worker-thread'
   }
-}
-
-function setupWebGLAttributeWithBuffer({
-  typedArray,
-  attributeName,
-  countPerVertex,
-  instancedDivisor = null,
-  type = gl.FLOAT,
-  normalized = false,
-  stride = 0,
-  offset = 0,
-  drawType = gl.STATIC_DRAW,
-}) {
-  const buffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-  gl.bufferData(gl.ARRAY_BUFFER, typedArray, drawType)
-  const location = gl.getAttribLocation(glProgram, attributeName)
-  gl.enableVertexAttribArray(location)
-  gl.vertexAttribPointer(location, countPerVertex, type, normalized, stride, offset)
-  gl.bindBuffer(gl.ARRAY_BUFFER, null)
-  if (instancedDivisor) {
-    instanceExtension.vertexAttribDivisorANGLE(location, instancedDivisor)
-  }
-  return buffer
 }
 
 function resizeCanvas() {

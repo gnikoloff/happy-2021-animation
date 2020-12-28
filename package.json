@@ -36,6 +36,7 @@
     "webgl-lint": "^1.8.0"
   },
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "oes-vertex-attrib-array-polyfill": "^1.0.1"
   }
 }
