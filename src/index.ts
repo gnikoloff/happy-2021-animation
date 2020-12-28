@@ -4,10 +4,15 @@ import getCanvasTexture from './get-canvas-texture'
 
 import ballsVertexShaderSource from './balls-shader.vert'
 import ballsFragmentShaderSource from './balls-shader.frag'
+
 import quadVertexShaderSource from './quad-shader.vert'
 import quadFragmentShaderSource from './quad-shader.frag'
+
 import linesVertexShaderSource from './lines-shader.vert'
 import linesFragmentShaderSource from './lines-shader.frag'
+
+import labelVertexShaderSource from './label-shader.vert'
+import labelFragmentShaderSource from './label-shader.frag'
 
 const GLOBAL_STATE = {
   innerWidth,
@@ -16,25 +21,62 @@ const GLOBAL_STATE = {
   particleCount: 100,
   linesCount: 3,
   lineWidth: 300,
+  lineAngle: 20,
   linesSpring: 0.7,
   bounceScale: 0.8,
   gravity: 0.05,
   animationSwitchTimeout: 6000,
 }
 
+const maxLineOccupyHeight = GLOBAL_STATE.innerHeight * 0.75
+const lineStepY = maxLineOccupyHeight / GLOBAL_STATE.linesCount
+
+const linesData = [
+  {
+    x: innerWidth / 2 - innerWidth / 5,
+    y: lineStepY,
+    targetX: innerWidth / 2 - innerWidth / 5,
+    angle: GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleTarget: GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleVel: 0,
+    vx: 0,
+    rotVx: 0,
+  },
+  {
+    x: innerWidth / 2 + innerWidth / 5,
+    y: lineStepY * 2,
+    targetX: innerWidth / 2 + innerWidth / 5,
+    angle: -GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleTarget: -GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleVel: 0,
+    vx: 0,
+    rotVx: 0,
+  },
+  {
+    x: innerWidth / 2 - innerWidth / 5,
+    y: lineStepY * 3,
+    targetX: innerWidth / 2 - innerWidth / 5,
+    angle: GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleTarget: GLOBAL_STATE.lineAngle * Math.PI / 180,
+    angleVel: 0,
+    vx: 0,
+    rotVx: 0,
+  }
+]
+
 const appContainer = document.getElementById('canvas-container')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl')
-
-// ------- WebGL Extensions -------
-const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
-const instanceExtension = gl.getExtension('ANGLE_instanced_arrays')
-const vaoExtension = gl.getExtension('OES_vertex_array_object')
 
 let u_targetTexture
 let u_textTexture
 let oldTime = 0
 let animationSwitchCounter = 0
+
+// ------- WebGL Extensions -------
+const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
+const instanceExtension = gl.getExtension('ANGLE_instanced_arrays')
+const vaoExtension = gl.getExtension('OES_vertex_array_object')
 
 // ------- Fullscreen quad program and geometry -------
 const planeProgram = makeProgram(gl, {
@@ -74,38 +116,83 @@ gl.vertexAttribPointer(postFXPlaneUvLocation, 2, gl.FLOAT, false, 0, 0)
 // Unbind quad VAO
 vaoExtension.bindVertexArrayOES(null)
 
+// ------- Hardware instanced text labels program and geometry -------
+const labelProgram = makeProgram(gl, {
+  vertexShaderSource: labelVertexShaderSource,
+  fragmentShaderSource: labelFragmentShaderSource,
+})
+
+const labelWidth = 300
+const labelHeight = 150
+const labelVertexArray = new Float32Array([-labelWidth / 2, 0, labelWidth / 2, 0, labelWidth / 2, -labelHeight, -labelWidth / 2, 0, labelWidth / 2, -labelHeight, -labelWidth / 2, -labelHeight])
+const labelUvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
+const labelTransformsArray = new Float32Array(GLOBAL_STATE.linesCount * 3)
+
+for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
+  labelTransformsArray[i * 3 + 0] = linesData[i].x
+  labelTransformsArray[i * 3 + 1] = linesData[i].y
+  labelTransformsArray[i * 3 + 2] = linesData[i].angle
+}
+
+// Look up label quad attribute locations
+const labelPositionLocation = gl.getAttribLocation(labelProgram, 'a_position')
+const labelUvLocation = gl.getAttribLocation(labelProgram, 'a_uv')
+const labelTransformLocation = gl.getAttribLocation(labelProgram, 'a_transform')
+
+// Create label quad buffers
+const labelVertexBuffer = gl.createBuffer()
+tagDebugGLObject(labelVertexBuffer, 'labelVertexBuffer')
+const labelUvsBuffer = gl.createBuffer()
+tagDebugGLObject(labelVertexBuffer, 'labelUvsBuffer')
+const labelTransformsBuffer = gl.createBuffer()
+tagDebugGLObject(labelTransformsBuffer, 'labelTransformsBuffer')
+
+// Create and bind label VAO
+const labelVAO = vaoExtension.createVertexArrayOES()
+tagDebugGLObject(labelVAO, 'labelVAO')
+vaoExtension.bindVertexArrayOES(labelVAO)
+
+// Label vertices
+gl.bindBuffer(gl.ARRAY_BUFFER, labelVertexBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, labelVertexArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(labelPositionLocation)
+gl.vertexAttribPointer(labelPositionLocation, 2, gl.FLOAT, false, 0, 0)
+
+// Label uvs
+gl.bindBuffer(gl.ARRAY_BUFFER, labelUvsBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, labelUvsArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(labelUvLocation)
+gl.vertexAttribPointer(labelUvLocation, 2, gl.FLOAT, false, 0, 0)
+
+// Label offsets and rotations
+gl.bindBuffer(gl.ARRAY_BUFFER, labelTransformsBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, labelTransformsArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(labelTransformLocation)
+gl.vertexAttribPointer(labelTransformLocation, 3, gl.FLOAT, false, 0, 0)
+instanceExtension.vertexAttribDivisorANGLE(labelTransformLocation, 1)
+
+// Unbind label VAO
+vaoExtension.bindVertexArrayOES(null)
+
 // ------- Hardware instanced lines program and geometry -------
 const linesProgram = makeProgram(gl, {
   vertexShaderSource: linesVertexShaderSource,
   fragmentShaderSource: linesFragmentShaderSource,
 })
-const linesVertexArray = new Float32Array([0, 0, GLOBAL_STATE.lineWidth, 0])
-const linesOffsetsArray = new Float32Array(GLOBAL_STATE.linesCount * 2)
-const linesRotationsArray = new Float32Array(GLOBAL_STATE.linesCount)
-
-const linesOffsetsTargetsArray = new Float32Array(GLOBAL_STATE.linesCount * 2)
-const linesRotationsTargetsArray = new Float32Array(GLOBAL_STATE.linesCount)
-const linesVelocitiesArray = new Float32Array(GLOBAL_STATE.linesCount).fill(0)
-const linesRotationVelocitiesArray = new Float32Array(GLOBAL_STATE.linesCount).fill(0)
-
-const maxLineOccupyHeight = innerHeight * 0.75
-const lineStepY = maxLineOccupyHeight / GLOBAL_STATE.linesCount
-
-const offsetXLine1 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-const offsetXLine2 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-const offsetXLine3 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-const offsetYLine1 = lineStepY
-const offsetYLine2 = lineStepY * 2
-const offsetYLine3 = lineStepY * 3
-linesOffsetsArray[0] = linesOffsetsTargetsArray[0] = offsetXLine1
-linesOffsetsArray[1] = linesOffsetsTargetsArray[1] = offsetYLine1
-linesOffsetsArray[2] = linesOffsetsTargetsArray[2] = offsetXLine2
-linesOffsetsArray[3] = linesOffsetsTargetsArray[3] = offsetYLine2
-linesOffsetsArray[4] = linesOffsetsTargetsArray[4] = offsetXLine3
-linesOffsetsArray[5] = linesOffsetsTargetsArray[5] = offsetYLine3
-linesRotationsArray[0] = linesRotationsTargetsArray[0] = 15 * Math.PI / 180
-linesRotationsArray[1] = linesRotationsTargetsArray[1] = -15 * Math.PI / 180
-linesRotationsArray[2] = linesRotationsTargetsArray[2] = 15 * Math.PI / 180
+const linesVertexArray = new Float32Array([-GLOBAL_STATE.lineWidth / 2, 0, GLOBAL_STATE.lineWidth / 2, 0])
+const linesOffsetsArray = new Float32Array([
+  linesData[0].x,
+  linesData[0].y,
+  linesData[1].x,
+  linesData[1].y,
+  linesData[2].x,
+  linesData[2].y
+])
+const linesRotationsArray = new Float32Array([
+  linesData[0].angle,
+  linesData[1].angle,
+  linesData[2].angle
+])
 
 // Look up lines program attributes
 const linePositionLocation = gl.getAttribLocation(linesProgram, 'a_position')
@@ -289,6 +376,11 @@ function init() {
   gl.uniform2f(u_textTextureResolution, textureCanvas.width, textureCanvas.height)
   gl.useProgram(null)
 
+  gl.useProgram(labelProgram)
+  u_projectionMatrix = gl.getUniformLocation(labelProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
   setInterval(() => {
     let offsetXLine1
     let offsetXLine2
@@ -297,26 +389,26 @@ function init() {
     let angleLine2
     let angleLine3
     if (animationSwitchCounter % 2 === 0) {
-      offsetXLine1 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      offsetXLine2 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      offsetXLine3 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      angleLine1 = -15
-      angleLine2 = 15
-      angleLine3 = -15
+      offsetXLine1 = innerWidth / 2 + innerWidth / 5
+      offsetXLine2 = innerWidth / 2 - innerWidth / 5
+      offsetXLine3 = innerWidth / 2 + innerWidth / 5
+      angleLine1 = -GLOBAL_STATE.lineAngle
+      angleLine2 = GLOBAL_STATE.lineAngle
+      angleLine3 = -GLOBAL_STATE.lineAngle
     } else {
-      offsetXLine1 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      offsetXLine2 = innerWidth / 2 + innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      offsetXLine3 = innerWidth / 2 - innerWidth / 5 - GLOBAL_STATE.lineWidth / 2
-      angleLine1 = 15
-      angleLine2 = -15
-      angleLine3 = 15
+      offsetXLine1 = innerWidth / 2 - innerWidth / 5
+      offsetXLine2 = innerWidth / 2 + innerWidth / 5
+      offsetXLine3 = innerWidth / 2 - innerWidth / 5
+      angleLine1 = GLOBAL_STATE.lineAngle
+      angleLine2 = -GLOBAL_STATE.lineAngle
+      angleLine3 = GLOBAL_STATE.lineAngle
     }
-    linesOffsetsTargetsArray[0] = offsetXLine1
-    linesOffsetsTargetsArray[2] = offsetXLine2
-    linesOffsetsTargetsArray[4] = offsetXLine3
-    linesRotationsTargetsArray[0] = angleLine1 * Math.PI / 180
-    linesRotationsTargetsArray[1] = angleLine2 * Math.PI / 180
-    linesRotationsTargetsArray[2] = angleLine3 * Math.PI / 180
+    linesData[0].targetX = offsetXLine1
+    linesData[1].targetX = offsetXLine2
+    linesData[2].targetX = offsetXLine3
+    linesData[0].angleTarget = angleLine1 * Math.PI / 180
+    linesData[1].angleTarget = angleLine2 * Math.PI / 180
+    linesData[2].angleTarget = angleLine3 * Math.PI / 180
 
     animationSwitchCounter++
   }, GLOBAL_STATE.animationSwitchTimeout)
@@ -355,19 +447,29 @@ function renderFrame(ts) {
 
 
   for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
-    linesVelocitiesArray[i] += (linesOffsetsTargetsArray[i * 2 + 0] - linesOffsetsArray[i * 2 + 0]) * (dt * 0.1)
-    linesVelocitiesArray[i] *= GLOBAL_STATE.linesSpring
-    linesOffsetsArray[i * 2 + 0] += linesVelocitiesArray[i]
+    linesData[i].vx += (linesData[i].targetX - linesOffsetsArray[i * 2 + 0]) * (dt * 0.1)
+    linesData[i].vx *= GLOBAL_STATE.linesSpring
 
+    linesData[i].x += linesData[i].vx
 
-    linesRotationVelocitiesArray[i] += (linesRotationsTargetsArray[i] - linesRotationsArray[i]) * (dt * 0.1)
-    linesRotationVelocitiesArray[i] *= GLOBAL_STATE.linesSpring
-    linesRotationsArray[i] += linesRotationVelocitiesArray[i]
+    linesOffsetsArray[i * 2 + 0] = linesData[i].x
+    labelTransformsArray[i * 3 + 0] = linesData[i].x
+
+    linesData[i].angleVel += (linesData[i].angleTarget - linesRotationsArray[i]) * (dt * 0.1)
+    linesData[i].angleVel *= GLOBAL_STATE.linesSpring
+    linesData[i].angle += linesData[i].angleVel
+
+    linesRotationsArray[i] = linesData[i].angle
+    labelTransformsArray[i * 3 + 2] = -linesData[i].angle
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, linesOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, linesOffsetsArray, gl.STATIC_DRAW)
   gl.bindBuffer(gl.ARRAY_BUFFER, linesRotationBuffers)
   gl.bufferData(gl.ARRAY_BUFFER, linesRotationsArray, gl.STATIC_DRAW)
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, labelTransformsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, labelTransformsArray, gl.STATIC_DRAW)
+
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
   // ------- Render our scene -------
@@ -376,37 +478,44 @@ function renderFrame(ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
-  // Bind framebuffer to render the balls to
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  vaoExtension.bindVertexArrayOES(labelVAO)
+  gl.useProgram(labelProgram)
+  instanceExtension.drawArraysInstancedANGLE(gl.LINE_LOOP, 0, 6, GLOBAL_STATE.linesCount)
+  gl.useProgram(null)
+  vaoExtension.bindVertexArrayOES(null)
+
+  // // Bind framebuffer to render the balls to
+  // gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
   // Clear framebuffer before drawing
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
+  // gl.clearColor(0.1, 0.1, 0.1, 1.0)
+  // gl.clear(gl.COLOR_BUFFER_BIT)
 
-  vaoExtension.bindVertexArrayOES(ballsVao)
-  gl.useProgram(ballsProgram)
-  instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
-  gl.useProgram(null)
-  vaoExtension.bindVertexArrayOES(null)
 
-  // Unbind framebuffer
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  // vaoExtension.bindVertexArrayOES(ballsVao)
+  // gl.useProgram(ballsProgram)
+  // instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
+  // gl.useProgram(null)
+  // vaoExtension.bindVertexArrayOES(null)
 
-  // Render post processing quad
-  vaoExtension.bindVertexArrayOES(planeVao)
-  gl.useProgram(planeProgram)
-  gl.activeTexture(gl.TEXTURE0)
-  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-  gl.uniform1i(u_targetTexture, 0)
-  gl.activeTexture(gl.TEXTURE1)
-  gl.bindTexture(gl.TEXTURE_2D, textTexture)
-  gl.uniform1i(u_textTexture, 1)
-  gl.drawArrays(gl.TRIANGLES, 0, 6)
-  gl.bindTexture(gl.TEXTURE_2D, null)
-  gl.useProgram(null)
-  vaoExtension.bindVertexArrayOES(null)
+  // // Unbind framebuffer
+  // gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-  // Render lines
+  // // Render post processing quad
+  // vaoExtension.bindVertexArrayOES(planeVao)
+  // gl.useProgram(planeProgram)
+  // gl.activeTexture(gl.TEXTURE0)
+  // gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+  // gl.uniform1i(u_targetTexture, 0)
+  // gl.activeTexture(gl.TEXTURE1)
+  // gl.bindTexture(gl.TEXTURE_2D, textTexture)
+  // gl.uniform1i(u_textTexture, 1)
+  // gl.drawArrays(gl.TRIANGLES, 0, 6)
+  // gl.bindTexture(gl.TEXTURE_2D, null)
+  // gl.useProgram(null)
+  // vaoExtension.bindVertexArrayOES(null)
+
+  // // Render lines
   vaoExtension.bindVertexArrayOES(linesVao)
   gl.useProgram(linesProgram)
   instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
