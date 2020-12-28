@@ -1,11 +1,5 @@
 import 'oes-vertex-attrib-array-polyfill'
 
-import {
-  makeProgram,
-  getExtension,
-  orthographic,
-} from './helpers'
-
 import getCanvasTexture from './get-canvas-texture'
 
 import ballsVertexShaderSource from './balls-shader.vert'
@@ -31,9 +25,9 @@ const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl')
 
 // ------- WebGL Extensions -------
-const webglDebugExtension = getExtension(gl, 'GMAN_debug_helper')
-const instanceExtension = getExtension(gl, 'ANGLE_instanced_arrays')
-const vaoExtension = getExtension(gl, 'OES_vertex_array_object')
+const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
+const instanceExtension = gl.getExtension('ANGLE_instanced_arrays')
+const vaoExtension = gl.getExtension('OES_vertex_array_object')
 
 let u_targetTexture
 let u_textTexture
@@ -549,3 +543,54 @@ function resizeCanvas() {
   canvas.style.width = `${GLOBAL_STATE.innerWidth}px`
   canvas.style.height = `${GLOBAL_STATE.innerHeight}px`
 }
+
+// ------- WebGL Helpers -------
+function makeShader(gl, { shaderType, shaderSource }) {
+  const shader = gl.createShader(shaderType)
+  gl.shaderSource(shader, shaderSource)
+  gl.compileShader(shader)
+  const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
+  if (success) {
+    return shader
+  }
+  console.error(`
+    Error in ${shaderType === gl.VERTEX_SHADER ? 'vertex' : 'fragment'} shader:
+    ${gl.getShaderInfoLog(shader)}
+  `)
+  gl.deleteShader(shader)
+}
+
+function makeProgram(gl, { vertexShaderSource, fragmentShaderSource }) {
+  const vertexShader = makeShader(gl, {
+    shaderType: gl.VERTEX_SHADER,
+    shaderSource: vertexShaderSource,
+  })
+  const fragmentShader = makeShader(gl, {
+    shaderType: gl.FRAGMENT_SHADER,
+    shaderSource: fragmentShaderSource,
+  })
+  const program = gl.createProgram()
+  gl.attachShader(program, vertexShader)
+  gl.attachShader(program, fragmentShader)
+  gl.linkProgram(program)
+  const success = gl.getProgramParameter(program, gl.LINK_STATUS)
+  if (success) {
+    return program
+  }
+  console.error(gl.getProgramInfoLog(program))
+  gl.deleteProgram(program)
+}
+
+function orthographic({ left, right, bottom, top, near, far }) {
+  return new Float32Array([
+    2 / (right - left), 0, 0, 0,
+    0, 2 / (top - bottom), 0, 0,
+    0, 0, 2 / (near - far), 0,
+
+    (left + right) / (left - right),
+    (bottom + top) / (bottom - top),
+    (near + far) / (near - far),
+    1,
+  ])
+}
+
