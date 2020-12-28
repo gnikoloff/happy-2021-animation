@@ -86,16 +86,12 @@ const calculatePhysics = ({
     const lineBounds = getLineBounds(lineIdx)
 
     for (let i = 0; i < particlesCount; i++) {
-
-
       const ballx = offsetsArray[i * 2 + 0]
       const bally = offsetsArray[i * 2 + 1]
       const ballvx = velocitiesArray[i * 2 + 0]
       const ballvy = velocitiesArray[i * 2 + 1]
 
-      // debugger
       if (ballx + radius / 2 > lineBounds.x && ballx - radius / 2 < lineBounds.x + lineBounds.width) {
-        // debugger
         const lineRotation = linesRotationsArray[lineIdx]
         const cos = Math.cos(lineRotation)
         const sin = Math.sin(lineRotation)
@@ -108,9 +104,6 @@ const calculatePhysics = ({
         let y1 = cos * y - sin * x
 
         if (y1 > -radius / 2 && y1 < vy1) {
-          // console.log('----------------')
-          // console.log(lineBounds.x, lineBounds.x + lineBounds.width)
-          // console.log(ballx + radius, ballx - radius)
           const x2 = cos * x + sin * y
 
           y1 = -radius / 2
@@ -124,17 +117,6 @@ const calculatePhysics = ({
 
           offsetsArray[i * 2 + 0] = linesOffsetsArray[lineIdx * 2 + 0] + x
           offsetsArray[i * 2 + 1] = linesOffsetsArray[lineIdx * 2 + 1] + y
-          if (isNaN(linesOffsetsArray[i * 2 + 0] + x) || isNaN(linesOffsetsArray[i * 2 + 1] + y)) {
-            // debugger
-          }
-        }
-        if (
-          isNaN(velocitiesArray[i * 2 + 0]) ||
-          isNaN(velocitiesArray[i * 2 + 1]) ||
-          isNaN(offsetsArray[i * 2 + 0]) ||
-          isNaN(offsetsArray[i * 2 + 1])
-        ) {
-          // debugger
         }
       }
     }
@@ -148,11 +130,6 @@ const calculatePhysics = ({
   for (let i = 0; i < linesRotationsArray.length; i++) {
     checkLine(i)
   }
-
-  // console.log(lineBounds.x, lineBounds.x + lineBounds.width)
-
-
-
 
   return { velocitiesArray, offsetsArray, oldOffsetsArray }
 }
