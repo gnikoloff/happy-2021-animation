@@ -25,8 +25,8 @@ import {
 const GLOBAL_STATE = {
   innerWidth,
   innerHeight,
-  radius: 180,
-  particleCount: 250,
+  radius: 300,
+  particleCount: 50,
   bounceScale: 0.8,
   gravity: 0.9,
   useWorker: false,
@@ -43,14 +43,15 @@ const instanceExtension = getExtension(gl, 'ANGLE_instanced_arrays')
 const vaoExtension = getExtension(gl, 'OES_vertex_array_object')
 // const worker = new PhysicsWorker()
 
-let u_texture
+let u_targetTexture
+let u_textTexture
 
 // ------- Fullscreen quad program and geometry -------
 const planeProgram = makeProgram(gl, {
   vertexShaderSource: quadVertexShaderSource,
   fragmentShaderSource: quadFragmentShaderSource,
 })
-webglDebugExtension.tagObject(planeProgram, 'planeProgram')
+// webglDebugExtension.tagObject(planeProgram, 'planeProgram')
 
 const planeVertexArray = new Float32Array([
   1.0, 1.0,
@@ -70,7 +71,7 @@ const planeUvsArray = new Float32Array([
 ])
 
 const planeVao = vaoExtension.createVertexArrayOES()
-webglDebugExtension.tagObject(planeVao, 'planeVao')
+// webglDebugExtension.tagObject(planeVao, 'planeVao')
 vaoExtension.bindVertexArrayOES(planeVao)
 
 const postFXPlanePositionLocation = gl.getAttribLocation(planeProgram, 'a_position')
@@ -120,7 +121,7 @@ for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
 }
 
 const ballsVao = vaoExtension.createVertexArrayOES()
-webglDebugExtension.tagObject(ballsVao, 'ballsVao')
+// webglDebugExtension.tagObject(ballsVao, 'ballsVao')
 
 vaoExtension.bindVertexArrayOES(ballsVao)
 
@@ -168,6 +169,20 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
 gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
+// ------- Create canvas texture with texts -------
+const textureCanvas = getCanvasTexture({
+  size: 512,
+  headline: 'HAPPY 2021'
+})
+const textTexture = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, textTexture)
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureCanvas)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+gl.bindTexture(gl.TEXTURE_2D, null)
+
+
 document.addEventListener('DOMContentLoaded', init)
 
 function init() {
@@ -179,11 +194,6 @@ function init() {
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-  const canvasTexture = getCanvasTexture({
-    size: 512,
-    headline: 'HAPPY 2021'
-  })
 
   const projectionMatrix = orthographic({
     left: 0,
@@ -200,7 +210,12 @@ function init() {
   gl.useProgram(null)
 
   gl.useProgram(planeProgram)
-  u_texture = gl.getUniformLocation(planeProgram, 'u_texture')
+  u_targetTexture = gl.getUniformLocation(planeProgram, 'u_targetTexture')
+  u_textTexture = gl.getUniformLocation(planeProgram, 'u_textTexture')
+  const u_resolution = gl.getUniformLocation(planeProgram, 'u_resolution')
+  gl.uniform2f(u_resolution, canvas.width, canvas.height)
+  const u_textTextureResolution = gl.getUniformLocation(planeProgram, 'u_textTextureResolution')
+  gl.uniform2f(u_textTextureResolution, textureCanvas.width, textureCanvas.height)
   gl.useProgram(null)
 
   // worker.postMessage({
@@ -262,8 +277,13 @@ function renderFrame(ts) {
 
   vaoExtension.bindVertexArrayOES(planeVao)
   gl.useProgram(planeProgram)
+
+  gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-  gl.uniform1i(u_texture, 0)
+  gl.uniform1i(u_targetTexture, 0)
+  gl.activeTexture(gl.TEXTURE1)
+  gl.bindTexture(gl.TEXTURE_2D, textTexture)
+  gl.uniform1i(u_textTexture, 1)
 
   gl.drawArrays(gl.TRIANGLES, 0, 6)
 
