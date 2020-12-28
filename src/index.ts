@@ -372,34 +372,21 @@ function init() {
   gl.useProgram(null)
 
   setInterval(() => {
-    let offsetXLine1
-    let offsetXLine2
-    let offsetXLine3
-    let angleLine1
-    let angleLine2
-    let angleLine3
     if (animationSwitchCounter % 2 === 0) {
-      offsetXLine1 = innerWidth / 2 + innerWidth / 5
-      offsetXLine2 = innerWidth / 2 - innerWidth / 5
-      offsetXLine3 = innerWidth / 2 + innerWidth / 5
-      angleLine1 = -GLOBAL_STATE.lineAngle
-      angleLine2 = GLOBAL_STATE.lineAngle
-      angleLine3 = -GLOBAL_STATE.lineAngle
+      linesData[0].targetX = innerWidth / 2 + innerWidth / 5
+      linesData[1].targetX = innerWidth / 2 - innerWidth / 5
+      linesData[2].targetX = innerWidth / 2 + innerWidth / 5
+      linesData[0].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
+      linesData[1].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
+      linesData[2].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
     } else {
-      offsetXLine1 = innerWidth / 2 - innerWidth / 5
-      offsetXLine2 = innerWidth / 2 + innerWidth / 5
-      offsetXLine3 = innerWidth / 2 - innerWidth / 5
-      angleLine1 = GLOBAL_STATE.lineAngle
-      angleLine2 = -GLOBAL_STATE.lineAngle
-      angleLine3 = GLOBAL_STATE.lineAngle
+      linesData[0].targetX = innerWidth / 2 - innerWidth / 5
+      linesData[1].targetX = innerWidth / 2 + innerWidth / 5
+      linesData[2].targetX = innerWidth / 2 - innerWidth / 5
+      linesData[0].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
+      linesData[1].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
+      linesData[2].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
     }
-    linesData[0].targetX = offsetXLine1
-    linesData[1].targetX = offsetXLine2
-    linesData[2].targetX = offsetXLine3
-    linesData[0].angleTarget = angleLine1 * Math.PI / 180
-    linesData[1].angleTarget = angleLine2 * Math.PI / 180
-    linesData[2].angleTarget = angleLine3 * Math.PI / 180
-
     animationSwitchCounter++
   }, GLOBAL_STATE.animationSwitchTimeout)
 
@@ -467,6 +454,13 @@ function renderFrame(ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  // Bind framebuffer to render the balls to
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+
+  // Clear framebuffer before drawing
+  gl.clearColor(0.1, 0.1, 0.1, 1.0)
+  gl.clear(gl.COLOR_BUFFER_BIT)
+
   vaoExtension.bindVertexArrayOES(labelVAO)
   gl.useProgram(labelProgram)
   gl.activeTexture(gl.TEXTURE0)
@@ -481,34 +475,27 @@ function renderFrame(ts) {
   vaoExtension.bindVertexArrayOES(null)
   gl.bindTexture(gl.TEXTURE_2D, null)
 
-  // // Bind framebuffer to render the balls to
-  // gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
-  // Clear framebuffer before drawing
-  // gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  // gl.clear(gl.COLOR_BUFFER_BIT)
+  vaoExtension.bindVertexArrayOES(ballsVao)
+  gl.useProgram(ballsProgram)
+  instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
+  gl.useProgram(null)
+  vaoExtension.bindVertexArrayOES(null)
 
+  // Unbind framebuffer
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-  // vaoExtension.bindVertexArrayOES(ballsVao)
-  // gl.useProgram(ballsProgram)
-  // instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.particleCount)
-  // gl.useProgram(null)
-  // vaoExtension.bindVertexArrayOES(null)
-
-  // // Unbind framebuffer
-  // gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-
-  // // Render post processing quad
-  // vaoExtension.bindVertexArrayOES(planeVao)
-  // gl.useProgram(planeProgram)
-  // gl.activeTexture(gl.TEXTURE0)
-  // gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-  // gl.uniform1i(u_targetTexture, 0)
-  // gl.activeTexture(gl.TEXTURE1)
-  // gl.drawArrays(gl.TRIANGLES, 0, 6)
-  // gl.bindTexture(gl.TEXTURE_2D, null)
-  // gl.useProgram(null)
-  // vaoExtension.bindVertexArrayOES(null)
+  // Render post processing quad
+  vaoExtension.bindVertexArrayOES(planeVao)
+  gl.useProgram(planeProgram)
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+  gl.uniform1i(u_targetTexture, 0)
+  gl.activeTexture(gl.TEXTURE1)
+  gl.drawArrays(gl.TRIANGLES, 0, 6)
+  gl.bindTexture(gl.TEXTURE_2D, null)
+  gl.useProgram(null)
+  vaoExtension.bindVertexArrayOES(null)
 
   // // Render lines
   vaoExtension.bindVertexArrayOES(linesVao)
