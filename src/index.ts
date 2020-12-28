@@ -15,12 +15,6 @@ import quadFragmentShaderSource from './quad-shader.frag'
 import linesVertexShaderSource from './lines-shader.vert'
 import linesFragmentShaderSource from './lines-shader.frag'
 
-import {
-  EVT_INIT_WORLD,
-  EVT_REQUEST_UPDATE_WORLD,
-  EVT_UPDATED_WORLD,
-} from './constants'
-
 const GLOBAL_STATE = {
   innerWidth,
   innerHeight,
