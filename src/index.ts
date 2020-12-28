@@ -252,14 +252,17 @@ gl.bindTexture(gl.TEXTURE_2D, null)
 document.addEventListener('DOMContentLoaded', init)
 
 function init() {
+  // Append canvas to DOM
   appContainer.appendChild(canvas)
-
+  // Resize canvas and listen to resize events
   resizeCanvas()
   document.body.addEventListener('resize', resizeCanvas)
 
+  // Enable blending
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+  // Create orthographic projection matrix
   const projectionMatrix = orthographic({
     left: 0,
     right: GLOBAL_STATE.innerWidth / 2,
@@ -273,17 +276,21 @@ function init() {
 
   gl.useProgram(ballsProgram)
   u_projectionMatrix = gl.getUniformLocation(ballsProgram, 'u_projectionMatrix')
+  // Pass projection matrix to balls program
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
   gl.useProgram(linesProgram)
   u_projectionMatrix = gl.getUniformLocation(linesProgram, 'u_projectionMatrix')
+  // Pass projection matrix to lines program
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
   gl.useProgram(planeProgram)
+  // Look up textures locations for fullscreen postprocessing quad
   u_targetTexture = gl.getUniformLocation(planeProgram, 'u_targetTexture')
   u_textTexture = gl.getUniformLocation(planeProgram, 'u_textTexture')
+  // Pass screen resolution to postprocessing quad
   const u_resolution = gl.getUniformLocation(planeProgram, 'u_resolution')
   gl.uniform2f(u_resolution, canvas.width, canvas.height)
   const u_textTextureResolution = gl.getUniformLocation(planeProgram, 'u_textTextureResolution')
@@ -300,13 +307,38 @@ function renderFrame(ts) {
   }
   oldTime = ts
 
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+  // ------- Update phsycis -------
+  // Check balls collisions
+  for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
+    for (let n = i + 1; n < GLOBAL_STATE.particleCount; n++) {
+      // checkCollision(i, n)
+    }
+  }
+  for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
+    // Update balls with correct velocities
+    moveBall(dt, i)
+    // Bounce balls back when touching viewport borders
+    checkWall(i)
+  }
+  for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
+    // Bounce balls of lines
+    checkLine(i)
+  }
+  // Update balls offsets
+  gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
+  gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
+  // ------- Render our scene -------
+  // Size and clear canvas
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  // Bind framebuffer to render the balls to
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
+  // Clear framebuffer before drawing
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
@@ -316,60 +348,36 @@ function renderFrame(ts) {
   gl.useProgram(null)
   vaoExtension.bindVertexArrayOES(null)
 
+  // Unbind framebuffer
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
-
+  // Render post processing quad
   vaoExtension.bindVertexArrayOES(planeVao)
   gl.useProgram(planeProgram)
-
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, targetTexture)
   gl.uniform1i(u_targetTexture, 0)
   gl.activeTexture(gl.TEXTURE1)
   gl.bindTexture(gl.TEXTURE_2D, textTexture)
   gl.uniform1i(u_textTexture, 1)
-
   gl.drawArrays(gl.TRIANGLES, 0, 6)
-
   gl.bindTexture(gl.TEXTURE_2D, null)
   gl.useProgram(null)
   vaoExtension.bindVertexArrayOES(null)
 
-
+  // Render lines
   vaoExtension.bindVertexArrayOES(linesVao)
   gl.useProgram(linesProgram)
   instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
   gl.useProgram(null)
   vaoExtension.bindVertexArrayOES(null)
 
-  for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
-    for (let n = i + 1; n < GLOBAL_STATE.particleCount; n++) {
-      // checkCollision(i, n)
-    }
-  }
-
-  for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
-    moveBall(dt, i)
-    checkWall(i)
-  }
-
-  for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
-    checkLine(i)
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
-  gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
+  // Issue next draw
   requestAnimationFrame(renderFrame)
 }
 
 // ------- Helpers -------
-
-const getLineBounds = i => {
+function getLineBounds(i) {
   const x1 = linesVertexArray[0]
   const y1 = linesVertexArray[1]
   const x2 = linesVertexArray[2]
