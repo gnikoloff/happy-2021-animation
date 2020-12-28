@@ -294,7 +294,10 @@ function init() {
 }
 
 function renderFrame(ts) {
-  const dt = ts - oldTime
+  let dt = ts - oldTime
+  if (dt > 1) {
+    dt = 1
+  }
   oldTime = ts
 
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
