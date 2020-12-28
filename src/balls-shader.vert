@@ -1,5 +1,3 @@
-precision highp float;
-
 uniform mat4 u_projectionMatrix;
 
 attribute vec4 a_offset;
