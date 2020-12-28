@@ -1,7 +1,5 @@
 import 'oes-vertex-attrib-array-polyfill'
 
-import getCanvasTexture from './get-canvas-texture'
-
 import ballsVertexShaderSource from './balls-shader.vert'
 import ballsFragmentShaderSource from './balls-shader.frag'
 
@@ -25,6 +23,7 @@ const GLOBAL_STATE = {
   linesSpring: 0.7,
   bounceScale: 0.8,
   gravity: 0.05,
+  labelFontFamily: 'sans-serif',
   animationSwitchTimeout: 6000,
 }
 
@@ -68,15 +67,23 @@ const appContainer = document.getElementById('canvas-container')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl')
 
-let u_targetTexture
-let u_textTexture
 let oldTime = 0
 let animationSwitchCounter = 0
+
+let u_targetTexture
+let u_labelTexturesArray
 
 // ------- WebGL Extensions -------
 const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
 const instanceExtension = gl.getExtension('ANGLE_instanced_arrays')
 const vaoExtension = gl.getExtension('OES_vertex_array_object')
+
+// ------- Quad labels textures -------
+const labelWidth = 300
+const labelHeight = 150
+const label0Texture = createLabelTexture('HAPPY')
+const label1Texture = createLabelTexture('NEW')
+const label2Texture = createLabelTexture('YEAR')
 
 // ------- Fullscreen quad program and geometry -------
 const planeProgram = makeProgram(gl, {
@@ -122,22 +129,24 @@ const labelProgram = makeProgram(gl, {
   fragmentShaderSource: labelFragmentShaderSource,
 })
 
-const labelWidth = 300
-const labelHeight = 150
 const labelVertexArray = new Float32Array([-labelWidth / 2, 0, labelWidth / 2, 0, labelWidth / 2, -labelHeight, -labelWidth / 2, 0, labelWidth / 2, -labelHeight, -labelWidth / 2, -labelHeight])
 const labelUvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 const labelTransformsArray = new Float32Array(GLOBAL_STATE.linesCount * 3)
+const labelTexturesIndicesArray = new Float32Array(GLOBAL_STATE.linesCount)
 
 for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
   labelTransformsArray[i * 3 + 0] = linesData[i].x
   labelTransformsArray[i * 3 + 1] = linesData[i].y
   labelTransformsArray[i * 3 + 2] = linesData[i].angle
+
+  labelTexturesIndicesArray[i] = i
 }
 
 // Look up label quad attribute locations
 const labelPositionLocation = gl.getAttribLocation(labelProgram, 'a_position')
 const labelUvLocation = gl.getAttribLocation(labelProgram, 'a_uv')
 const labelTransformLocation = gl.getAttribLocation(labelProgram, 'a_transform')
+const labelTextureIndexLocation = gl.getAttribLocation(labelProgram, 'a_textureIdx')
 
 // Create label quad buffers
 const labelVertexBuffer = gl.createBuffer()
@@ -146,6 +155,8 @@ const labelUvsBuffer = gl.createBuffer()
 tagDebugGLObject(labelVertexBuffer, 'labelUvsBuffer')
 const labelTransformsBuffer = gl.createBuffer()
 tagDebugGLObject(labelTransformsBuffer, 'labelTransformsBuffer')
+const labelTextureIndicesBuffer = gl.createBuffer()
+tagDebugGLObject(labelTextureIndicesBuffer, 'labelTextureIndicesBuffer')
 
 // Create and bind label VAO
 const labelVAO = vaoExtension.createVertexArrayOES()
@@ -171,6 +182,13 @@ gl.enableVertexAttribArray(labelTransformLocation)
 gl.vertexAttribPointer(labelTransformLocation, 3, gl.FLOAT, false, 0, 0)
 instanceExtension.vertexAttribDivisorANGLE(labelTransformLocation, 1)
 
+// Label texture indices
+gl.bindBuffer(gl.ARRAY_BUFFER, labelTextureIndicesBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, labelTexturesIndicesArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(labelTextureIndexLocation)
+gl.vertexAttribPointer(labelTextureIndexLocation, 1, gl.FLOAT, false, 0, 0)
+instanceExtension.vertexAttribDivisorANGLE(labelTextureIndexLocation, 1)
+
 // Unbind label VAO
 vaoExtension.bindVertexArrayOES(null)
 
@@ -180,19 +198,8 @@ const linesProgram = makeProgram(gl, {
   fragmentShaderSource: linesFragmentShaderSource,
 })
 const linesVertexArray = new Float32Array([-GLOBAL_STATE.lineWidth / 2, 0, GLOBAL_STATE.lineWidth / 2, 0])
-const linesOffsetsArray = new Float32Array([
-  linesData[0].x,
-  linesData[0].y,
-  linesData[1].x,
-  linesData[1].y,
-  linesData[2].x,
-  linesData[2].y
-])
-const linesRotationsArray = new Float32Array([
-  linesData[0].angle,
-  linesData[1].angle,
-  linesData[2].angle
-])
+const linesOffsetsArray = new Float32Array([linesData[0].x, linesData[0].y, linesData[1].x, linesData[1].y, linesData[2].x, linesData[2].y])
+const linesRotationsArray = new Float32Array([linesData[0].angle, linesData[1].angle, linesData[2].angle])
 
 // Look up lines program attributes
 const linePositionLocation = gl.getAttribLocation(linesProgram, 'a_position')
@@ -314,20 +321,6 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
 gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-// ------- Create canvas texture with texts -------
-const textureCanvas = getCanvasTexture({
-  size: 512,
-  headline: 'HAPPY 2021'
-})
-const textTexture = gl.createTexture()
-gl.bindTexture(gl.TEXTURE_2D, textTexture)
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureCanvas)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-gl.bindTexture(gl.TEXTURE_2D, null)
-
-
 document.addEventListener('DOMContentLoaded', init)
 
 function init() {
@@ -353,30 +346,27 @@ function init() {
 
   let u_projectionMatrix
 
+  // ------- Initialize balls uniforms -------
   gl.useProgram(ballsProgram)
   u_projectionMatrix = gl.getUniformLocation(ballsProgram, 'u_projectionMatrix')
-  // Pass projection matrix to balls program
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
+  // ------- Initialize lines uniforms -------
   gl.useProgram(linesProgram)
   u_projectionMatrix = gl.getUniformLocation(linesProgram, 'u_projectionMatrix')
-  // Pass projection matrix to lines program
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
+  // ------- Initialize fullscreen quad uniforms -------
   gl.useProgram(planeProgram)
   // Look up textures locations for fullscreen postprocessing quad
   u_targetTexture = gl.getUniformLocation(planeProgram, 'u_targetTexture')
-  u_textTexture = gl.getUniformLocation(planeProgram, 'u_textTexture')
-  // Pass screen resolution to postprocessing quad
-  const u_resolution = gl.getUniformLocation(planeProgram, 'u_resolution')
-  gl.uniform2f(u_resolution, canvas.width, canvas.height)
-  const u_textTextureResolution = gl.getUniformLocation(planeProgram, 'u_textTextureResolution')
-  gl.uniform2f(u_textTextureResolution, textureCanvas.width, textureCanvas.height)
   gl.useProgram(null)
 
+  // ------- Initialize label uniforms -------
   gl.useProgram(labelProgram)
+  u_labelTexturesArray = gl.getUniformLocation(labelProgram, 'u_texturesArray')
   u_projectionMatrix = gl.getUniformLocation(labelProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
@@ -445,7 +435,7 @@ function renderFrame(ts) {
   gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.DYNAMIC_DRAW)
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
-
+  // Animate lines & labels positions & rotations
   for (let i = 0; i < GLOBAL_STATE.linesCount; i++) {
     linesData[i].vx += (linesData[i].targetX - linesOffsetsArray[i * 2 + 0]) * (dt * 0.1)
     linesData[i].vx *= GLOBAL_STATE.linesSpring
@@ -473,16 +463,23 @@ function renderFrame(ts) {
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
   // ------- Render our scene -------
-  // Size and clear canvas
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
   vaoExtension.bindVertexArrayOES(labelVAO)
   gl.useProgram(labelProgram)
-  instanceExtension.drawArraysInstancedANGLE(gl.LINE_LOOP, 0, 6, GLOBAL_STATE.linesCount)
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, label0Texture)
+  gl.activeTexture(gl.TEXTURE1)
+  gl.bindTexture(gl.TEXTURE_2D, label1Texture)
+  gl.activeTexture(gl.TEXTURE2)
+  gl.bindTexture(gl.TEXTURE_2D, label2Texture)
+  gl.uniform1iv(u_labelTexturesArray, [0, 1, 2])
+  instanceExtension.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, GLOBAL_STATE.linesCount)
   gl.useProgram(null)
   vaoExtension.bindVertexArrayOES(null)
+  gl.bindTexture(gl.TEXTURE_2D, null)
 
   // // Bind framebuffer to render the balls to
   // gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
@@ -508,8 +505,6 @@ function renderFrame(ts) {
   // gl.bindTexture(gl.TEXTURE_2D, targetTexture)
   // gl.uniform1i(u_targetTexture, 0)
   // gl.activeTexture(gl.TEXTURE1)
-  // gl.bindTexture(gl.TEXTURE_2D, textTexture)
-  // gl.uniform1i(u_textTexture, 1)
   // gl.drawArrays(gl.TRIANGLES, 0, 6)
   // gl.bindTexture(gl.TEXTURE_2D, null)
   // gl.useProgram(null)
@@ -527,6 +522,42 @@ function renderFrame(ts) {
 }
 
 // ------- Helpers -------
+function createLabelTexture(label) {
+  const canvas = document.createElement('canvas')
+  canvas.width = labelWidth
+  canvas.height = labelHeight
+
+  // canvas.setAttribute('style', `
+  //   position: fixed;
+  //   top: 1rem;
+  //   left: 1rem;
+  // `)
+  // document.body.appendChild(canvas)
+
+  const ctx = canvas.getContext('2d')
+  const fontSize = 100
+  ctx.font = `${fontSize}px ${GLOBAL_STATE.labelFontFamily}`
+  ctx.fillStyle = 'white'
+  ctx.textAlign = 'center'
+  const textMetrics = ctx.measureText(label)
+
+  const widthDelta = labelWidth / textMetrics.width
+  ctx.font = `${fontSize * widthDelta}px ${GLOBAL_STATE.labelFontFamily}`
+  ctx.fillText(label, canvas.width / 2, canvas.height)
+
+  const texture = gl.createTexture()
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+  tagDebugGLObject(texture, `Label texture: ${label}`)
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.bindTexture(gl.TEXTURE_2D, null)
+
+  return texture
+}
+
 function getLineBounds(i) {
   const x1 = linesVertexArray[0]
   const y1 = linesVertexArray[1]
