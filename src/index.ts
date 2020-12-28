@@ -38,7 +38,7 @@ const planeProgram = makeProgram(gl, {
   vertexShaderSource: quadVertexShaderSource,
   fragmentShaderSource: quadFragmentShaderSource,
 })
-// webglDebugExtension.tagObject(planeProgram, 'planeProgram')
+tagDebugGLObject(planeProgram, 'planeProgram')
 
 const planeVertexArray = new Float32Array([1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0])
 const planeUvsArray = new Float32Array([1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1])
@@ -53,7 +53,7 @@ const planeUvBuffer = gl.createBuffer()
 
 // Create quad VAO and bind it
 const planeVao = vaoExtension.createVertexArrayOES()
-// webglDebugExtension.tagObject(planeVao, 'planeVao')
+tagDebugGLObject(planeVao, 'planeVao')
 vaoExtension.bindVertexArrayOES(planeVao)
 
 // Quad vertices
@@ -110,15 +110,15 @@ const lineRotationLocation = gl.getAttribLocation(linesProgram, 'a_rotation')
 
 // Create lines buffers
 const linesVertexBuffer = gl.createBuffer()
-// webglDebugExtension.tagObject(linesVertexBuffer, 'linesVertexBuffer')
+tagDebugGLObject(linesVertexBuffer, 'linesVertexBuffer')
 const linesOffsetsBuffer = gl.createBuffer()
-// webglDebugExtension.tagObject(linesOffsetsBuffer, 'linesOffsetsBuffer')
+tagDebugGLObject(linesOffsetsBuffer, 'linesOffsetsBuffer')
 const linesRotationBuffers = gl.createBuffer()
-// webglDebugExtension.tagObject(linesRotationBuffers, 'linesRotationBuffers')
+tagDebugGLObject(linesRotationBuffers, 'linesRotationBuffers')
 
 // Create lines VAO and bind it
 const linesVao = vaoExtension.createVertexArrayOES()
-// webglDebugExtension.tagObject(planeVao, 'planeVao')
+tagDebugGLObject(planeVao, 'planeVao')
 vaoExtension.bindVertexArrayOES(linesVao)
 
 // Lines vertices
@@ -168,15 +168,15 @@ for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
 
 // Create balls buffers
 const ballsVertexBuffer = gl.createBuffer()
-// webglDebugExtension.tagObject(ballsVertexBuffer, 'ballsVertexBuffer')
+tagDebugGLObject(ballsVertexBuffer, 'ballsVertexBuffer')
 const ballsUvsBuffer = gl.createBuffer()
-// webglDebugExtension.tagObject(ballsUvsBuffer, 'ballsUvsBuffer')
+tagDebugGLObject(ballsUvsBuffer, 'ballsUvsBuffer')
 const ballsOffsetsBuffer = gl.createBuffer()
-// webglDebugExtension.tagObject(ballsOffsetsBuffer, 'ballsOffsetsBuffer')
+tagDebugGLObject(ballsOffsetsBuffer, 'ballsOffsetsBuffer')
 
 // Create balls VAO
 const ballsVao = vaoExtension.createVertexArrayOES()
-// webglDebugExtension.tagObject(ballsVao, 'ballsVao')
+tagDebugGLObject(ballsVao, 'ballsVao')
 vaoExtension.bindVertexArrayOES(ballsVao)
 
 // Lookup balls attributes
@@ -201,7 +201,7 @@ gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
 gl.bufferData(gl.ARRAY_BUFFER, offsetsArray, gl.STATIC_DRAW)
 gl.enableVertexAttribArray(ballsOffsetLocation)
 gl.vertexAttribPointer(ballsOffsetLocation, 2, gl.FLOAT, false, 0, 0)
-instanceExtension.vertexAttribDivisorANGLE(location, 1)
+instanceExtension.vertexAttribDivisorANGLE(ballsOffsetLocation, 1)
 
 // Unbind balls VAO
 vaoExtension.bindVertexArrayOES(null)
@@ -545,6 +545,12 @@ function resizeCanvas() {
 }
 
 // ------- WebGL Helpers -------
+function tagDebugGLObject(object, objectName) {
+  if (process.env.NODE_ENV === 'development') {
+    webglDebugExtension.tagObject(object, objectName)
+  }
+}
+
 function makeShader(gl, { shaderType, shaderSource }) {
   const shader = gl.createShader(shaderType)
   gl.shaderSource(shader, shaderSource)

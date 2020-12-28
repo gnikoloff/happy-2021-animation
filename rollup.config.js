@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript'
 import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
+import injectProcessEnv from 'rollup-plugin-inject-process-env'
 import glslify from 'rollup-plugin-glslify'
 
 export default {
@@ -13,6 +14,9 @@ export default {
     resolve(),
     commonjs(),
     typescript(),
-    glslify()
+    glslify(),
+    injectProcessEnv({ 
+      NODE_ENV: process.env.NODE_ENV,
+    }),
   ]
 }
