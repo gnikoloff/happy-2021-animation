@@ -6,7 +6,6 @@ import {
   orthographic,
 } from './helpers'
 
-import calculatePhysics from './calculate-physics'
 import getCanvasTexture from './get-canvas-texture'
 
 import ballsVertexShaderSource from './balls-shader.vert'
@@ -15,8 +14,6 @@ import quadVertexShaderSource from './quad-shader.vert'
 import quadFragmentShaderSource from './quad-shader.frag'
 import linesVertexShaderSource from './lines-shader.vert'
 import linesFragmentShaderSource from './lines-shader.frag'
-
-// import PhysicsWorker from 'web-worker:./physics-worker'
 
 import {
   EVT_INIT_WORLD,
@@ -32,8 +29,7 @@ const GLOBAL_STATE = {
   linesCount: 3,
   lineWidth: 300,
   bounceScale: 0.8,
-  gravity: 0.005,
-  useWorker: false,
+  gravity: 0.005
 }
 
 const appContainer = document.getElementById('canvas-container')
@@ -44,7 +40,6 @@ const gl = canvas.getContext('webgl')
 const webglDebugExtension = getExtension(gl, 'GMAN_debug_helper')
 const instanceExtension = getExtension(gl, 'ANGLE_instanced_arrays')
 const vaoExtension = getExtension(gl, 'OES_vertex_array_object')
-// const worker = new PhysicsWorker()
 
 let u_targetTexture
 let u_textTexture
