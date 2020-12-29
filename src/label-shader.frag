@@ -21,7 +21,7 @@ vec4 getSampleFromArray(sampler2D textures[numTextures], int ndx, vec2 uv) {
 
 void main () {
   if (u_debugMode) {
-    gl_FragColor = vec4(v_uv, 0.0, 1.0);
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
   } else {
     gl_FragColor = getSampleFromArray(u_texturesArray, int(v_textureIdx), v_uv);
   }

@@ -21,17 +21,18 @@ const GLOBAL_STATE = {
   innerHeight,
   radius: isMobile && isPortrait ? 120 : 200,
   particleCount: isMobile && isPortrait ? 150 : 100,
+  ballsBorderRadius: 0.25,
   linesCount: 3,
   lineWidth: isMobile && isPortrait ? 110 : 300,
   lineAngle: 20,
   linesSpring: 0.7,
   bounceScale: 0.8,
   lineBounceScale: 0.35,
-  gravity: 0.05,
+  gravity: 0.15,
   labelFontFamily: 'sans-serif',
   animationSwitchTimeout: 6000,
   debugMode: false,
-  disablePostProcessing: false,
+  backgroundColor: [5, 5, 0],
 }
 
 const maxLineOccupyHeight = GLOBAL_STATE.innerHeight * 0.75
@@ -85,6 +86,7 @@ let u_labelTexturesArray
 let u_labelDebugMode
 let u_ballDebugMode
 let u_quadResolution
+let u_ballsBorderRadius
 
 // ------- WebGL Extensions -------
 const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
@@ -358,11 +360,6 @@ function init() {
     gl.useProgram(ballsProgram)
     gl.uniform1f(u_ballDebugMode, GLOBAL_STATE.debugMode ? 1 : 0)
     gl.useProgram(null)
-
-    GLOBAL_STATE.disablePostProcessing = newVal
-  })
-  gui.add(GLOBAL_STATE, 'disablePostProcessing').listen().onChange(newVal => {
-    GLOBAL_STATE.disablePostProcessing = newVal
   })
   gui.add(GLOBAL_STATE, 'gravity').min(0.05).max(1).step(0.05)
   gui.add(GLOBAL_STATE, 'lineAngle').min(15).max(35).step(1).onChange(newVal => {
@@ -372,6 +369,11 @@ function init() {
     GLOBAL_STATE.lineAngle = newVal
   })
   gui.add(GLOBAL_STATE, 'lineBounceScale').min(0.1).max(0.4).step(0.05)
+  gui.add(GLOBAL_STATE, 'ballsBorderRadius').min(0.05).max(0.4).step(0.05).onChange(newVal => {
+    gl.useProgram(planeProgram)
+    gl.uniform1f(u_ballsBorderRadius, newVal)
+    gl.useProgram(null)
+  })
 
   // Append canvas to DOM
   appContainer.appendChild(canvas)
@@ -416,6 +418,9 @@ function init() {
 
   u_quadResolution = gl.getUniformLocation(planeProgram, 'u_resolution')
   gl.uniform2f(u_quadResolution, GLOBAL_STATE.innerWidth, GLOBAL_STATE.innerHeight)
+
+  u_ballsBorderRadius = gl.getUniformLocation(planeProgram, 'u_borderRadius')
+  gl.uniform1f(u_ballsBorderRadius, GLOBAL_STATE.ballsBorderRadius)
 
   gl.useProgram(null)
 
@@ -511,17 +516,46 @@ function renderFrame(ts) {
 
   // ------- Render our scene -------
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
+  // gl.clearColor(GLOBAL_STATE.backgroundColor[0] / 255, GLOBAL_STATE.backgroundColor[1] / 255, GLOBAL_STATE.backgroundColor[2] / 255, 1.0)
+  // gl.clear(gl.COLOR_BUFFER_BIT)
 
-  if (!GLOBAL_STATE.debugMode && !GLOBAL_STATE.disablePostProcessing) {
+  if (!GLOBAL_STATE.debugMode) {
     // Bind framebuffer to render the balls to
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
     // Clear framebuffer before drawing
-    gl.clearColor(0.1, 0.1, 0.1, 1.0)
+    gl.clearColor(GLOBAL_STATE.backgroundColor[0] / 255, GLOBAL_STATE.backgroundColor[1] / 255, GLOBAL_STATE.backgroundColor[2] / 255, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
   }
+
+  {
+    const drawMode = GLOBAL_STATE.debugMode ? gl.LINE_LOOP : gl.TRIANGLES
+    vaoExtension.bindVertexArrayOES(ballsVao)
+    gl.useProgram(ballsProgram)
+    instanceExtension.drawArraysInstancedANGLE(drawMode, 0, 6, GLOBAL_STATE.particleCount)
+    gl.useProgram(null)
+    vaoExtension.bindVertexArrayOES(null)
+  }
+
+  if (!GLOBAL_STATE.debugMode) {
+    // Unbind framebuffer
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  }
+
+  if (!GLOBAL_STATE.debugMode) {
+    // Render post processing quad
+    vaoExtension.bindVertexArrayOES(planeVao)
+    gl.useProgram(planeProgram)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+    gl.uniform1i(u_targetTexture, 0)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.drawArrays(gl.TRIANGLES, 0, 6)
+    gl.bindTexture(gl.TEXTURE_2D, null)
+    gl.useProgram(null)
+    vaoExtension.bindVertexArrayOES(null)
+  }
+
 
   {
     const drawMode = GLOBAL_STATE.debugMode ? gl.LINE_LOOP : gl.TRIANGLES
@@ -538,33 +572,6 @@ function renderFrame(ts) {
     gl.useProgram(null)
     vaoExtension.bindVertexArrayOES(null)
     gl.bindTexture(gl.TEXTURE_2D, null)
-  }
-
-  {
-    const drawMode = GLOBAL_STATE.debugMode ? gl.LINE_LOOP : gl.TRIANGLES
-    vaoExtension.bindVertexArrayOES(ballsVao)
-    gl.useProgram(ballsProgram)
-    instanceExtension.drawArraysInstancedANGLE(drawMode, 0, 6, GLOBAL_STATE.particleCount)
-    gl.useProgram(null)
-    vaoExtension.bindVertexArrayOES(null)
-  }
-
-  if (!GLOBAL_STATE.debugMode && !GLOBAL_STATE.disablePostProcessing) {
-    // Unbind framebuffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-  }
-  if (!GLOBAL_STATE.debugMode && !GLOBAL_STATE.disablePostProcessing) {
-    // Render post processing quad
-    vaoExtension.bindVertexArrayOES(planeVao)
-    gl.useProgram(planeProgram)
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-    gl.uniform1i(u_targetTexture, 0)
-    gl.activeTexture(gl.TEXTURE1)
-    gl.drawArrays(gl.TRIANGLES, 0, 6)
-    gl.bindTexture(gl.TEXTURE_2D, null)
-    gl.useProgram(null)
-    vaoExtension.bindVertexArrayOES(null)
   }
 
   // Render lines
@@ -594,7 +601,7 @@ function createLabelTexture(label) {
   const ctx = canvas.getContext('2d')
   const fontSize = 100
   ctx.font = `${fontSize}px ${GLOBAL_STATE.labelFontFamily}`
-  ctx.fillStyle = 'green'
+  ctx.fillStyle = '#fff'
   ctx.textAlign = 'center'
   const textMetrics = ctx.measureText(label)
 
