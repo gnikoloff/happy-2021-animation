@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "watch": "rollup -w -c",
+    "build": "rollup -c",
     "server": "node api/index.js",
     "start:dev": "NODE_ENV=development run-p server watch",
-    "start": "run-p server watch"
+    "start": "run-p server build"
   },
   "repository": {
     "type": "git",
