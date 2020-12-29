@@ -492,11 +492,13 @@ function renderFrame(ts) {
     linesRotationsArray[i] = linesData[i].angle
     labelTransformsArray[i * 3 + 2] = -linesData[i].angle
   }
+  // ------- Update lines buffers -------
   gl.bindBuffer(gl.ARRAY_BUFFER, linesOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, linesOffsetsArray, gl.STATIC_DRAW)
+
   gl.bindBuffer(gl.ARRAY_BUFFER, linesRotationBuffers)
   gl.bufferData(gl.ARRAY_BUFFER, linesRotationsArray, gl.STATIC_DRAW)
-
+  // ------- Update labels buffers -------
   gl.bindBuffer(gl.ARRAY_BUFFER, labelTransformsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, labelTransformsArray, gl.STATIC_DRAW)
 
@@ -510,11 +512,11 @@ function renderFrame(ts) {
   if (!GLOBAL_STATE.debugMode && !GLOBAL_STATE.disablePostProcessing) {
     // Bind framebuffer to render the balls to
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-  }
 
-  // Clear framebuffer before drawing
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
+    // Clear framebuffer before drawing
+    gl.clearColor(0.1, 0.1, 0.1, 1.0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+  }
 
   {
     const drawMode = GLOBAL_STATE.debugMode ? gl.LINE_LOOP : gl.TRIANGLES
@@ -560,7 +562,7 @@ function renderFrame(ts) {
     vaoExtension.bindVertexArrayOES(null)
   }
 
-  // // Render lines
+  // Render lines
   vaoExtension.bindVertexArrayOES(linesVao)
   gl.useProgram(linesProgram)
   instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
@@ -595,9 +597,11 @@ function createLabelTexture(label) {
   ctx.font = `${fontSize * widthDelta}px ${GLOBAL_STATE.labelFontFamily}`
   ctx.fillText(label, canvas.width / 2, canvas.height)
 
-  const texture = gl.createTexture()
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+
+  const texture = gl.createTexture()
   tagDebugGLObject(texture, `Label texture: ${label}`)
+
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -632,8 +636,8 @@ function getLineBounds(i) {
     const x2r = cos * x2 + sin * y2
     const y1r = cos * y1 + sin * x1
     const y2r = cos * y2 + sin * x2
-    const x = linesOffsetsArray[i * 2 + 0] + x1 + Math.min(x1r, x2r)
-    const y = linesOffsetsArray[i * 2 + 1] + y1 + Math.min(y1r, y2r)
+    const x = linesOffsetsArray[i * 2 + 0] + x1 + Math.min(x1r, x2r) + GLOBAL_STATE.lineWidth / 2
+    const y = linesOffsetsArray[i * 2 + 1] + y1 + Math.min(y1r, y2r) + GLOBAL_STATE.lineWidth / 2
     const width = Math.max(x1r, x2r) - Math.min(x1r, x2r)
     const height = Math.max(y1r, y2r) - Math.min(y1r, y2r)
     return {
