@@ -15,14 +15,16 @@
   <meta property="og:url" content="https://happy-new-2021.georgi-nikolov.com/">
   <meta property="og:title" content="HAPPY NEW YEAR 2021">
   <meta property="og:description" content="WebGL balls simulation to celebrate the end of 2020">
-  <meta property="og:image" content="TODO">
+  <meta property="og:image"
+    content="https://happy-new-2021.georgi-nikolov.com/assets/happy-new-year-site-preview-social.png">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://happy-new-2021.georgi-nikolov.com/">
   <meta property="twitter:title" content="HAPPY NEW YEAR 2021">
   <meta property="twitter:description" content="WebGL balls simulation to celebrate the end of 2020">
-  <meta property="twitter:image" content="TODO">
+  <meta property="twitter:image"
+    content="https://happy-new-2021.georgi-nikolov.com/assets/happy-new-year-site-preview-social.png">
 
 
   <style>
@@ -36,16 +38,17 @@
       height: 100vh;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-      color: rgba(255, 255, 255, 0.86);
+      color: rgba(0, 0, 0, 0.92);
     }
 
     a {
-      color: white;
+      color: #111;
     }
 
     h1 {
       font-weight: 500;
       font-size: 24px;
+      color: blue;
     }
 
     h2 {
@@ -71,12 +74,8 @@
       margin-top: 24px;
       width: 32px;
       height: 32px;
-      background-image: url('assets/info-icon.svg');
-      background-color: transparent;
-      background-size: 120%;
-      background-repeat: no-repeat;
-      background-position: 50%;
       border: none;
+      background: none;
     }
 
     @media (min-width: 760px) {
@@ -112,8 +111,10 @@
       bottom: 0;
       left: 0;
       z-index: -1;
-      background: rgba(0, 0, 0, 0.68);
+      background: rgba(255, 255, 255, 0.68);
       opacity: 1;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       transition: opacity 0.175s ease-out;
     }
 
@@ -140,7 +141,21 @@
 <body>
 
   <div id="info-container" class="closed">
-    <button id="info-toggle"></button>
+    <button id="info-toggle">
+      <svg style="enable-background:new 0 0 16 16;" version="1.1" viewBox="0 0 16 16" xml:space="preserve"
+        xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <g id="Layer_2">
+          <g fill="blue">
+            <path
+              d="M8,2C4.69,2,2,4.69,2,8s2.69,6,6,6s6-2.69,6-6S11.31,2,8,2z M8,13c-2.76,0-5-2.24-5-5s2.24-5,5-5s5,2.24,5,5    S10.76,13,8,13z" />
+            <path
+              d="M8,6.85c-0.28,0-0.5,0.22-0.5,0.5v3.4c0,0.28,0.22,0.5,0.5,0.5s0.5-0.22,0.5-0.5v-3.4C8.5,7.08,8.28,6.85,8,6.85z" />
+            <path
+              d="M8.01,4.8C7.75,4.78,7.51,5.05,7.5,5.32c0,0.01,0,0.07,0,0.08c0,0.27,0.21,0.47,0.49,0.48c0,0,0.01,0,0.01,0    c0.27,0,0.49-0.24,0.5-0.5c0-0.01,0-0.11,0-0.11C8.5,4.98,8.29,4.8,8.01,4.8z" />
+          </g>
+        </g>
+      </svg>
+    </button>
     <div id="info-content">
       <h1>Happy new 2021!</h1>
       <h2>2d metaballs physics animation with WebGL</h2>
@@ -154,6 +169,16 @@
   </div>
 
   <div id="canvas-container"></div>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5L7F17T8Y"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-C5L7F17T8Y');
+  </script>
 
   <script src="https://greggman.github.io/webgl-lint/webgl-lint.js" crossorigin></script>
   <script src="/bundle.js"></script>
