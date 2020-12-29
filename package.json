@@ -38,6 +38,7 @@
     "dat.gui": "^0.7.7",
     "express": "^4.17.1",
     "glsl-film-grain": "^1.0.4",
-    "oes-vertex-attrib-array-polyfill": "^1.0.1"
+    "oes-vertex-attrib-array-polyfill": "^1.0.1",
+    "stats.js": "^0.17.0"
   }
 }

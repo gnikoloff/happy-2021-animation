@@ -1,5 +1,6 @@
 import 'oes-vertex-attrib-array-polyfill'
 import * as dat from 'dat.gui'
+import Stats from 'stats.js'
 
 import ballsVertexShaderSource from './balls-shader.vert'
 import ballsFragmentShaderSource from './balls-shader.frag'
@@ -71,8 +72,15 @@ const linesData = [
   }
 ]
 
+// Debug Helpers
 const gui = new dat.GUI({ width: 310 })
 gui.close()
+
+let stats
+if (process.env.NODE_ENV === 'development') {
+  stats = new Stats()
+  document.body.appendChild(stats.domElement)
+}
 
 const appContainer = document.getElementById('canvas-container')
 const canvas = document.createElement('canvas')
@@ -463,6 +471,10 @@ function renderFrame(ts) {
   }
   oldTime = ts
 
+  if (process.env.NODE_ENV === 'development') {
+    stats.begin()
+  }
+
   // ------- Update balls phsycis -------
   // Check balls collisions
   for (let i = 0; i < GLOBAL_STATE.particleCount; i++) {
@@ -582,6 +594,10 @@ function renderFrame(ts) {
     instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
     gl.useProgram(null)
     vaoExtension.bindVertexArrayOES(null)
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    stats.end()
   }
 
   // Issue next draw
