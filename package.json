@@ -6,7 +6,8 @@
   "scripts": {
     "watch": "rollup -w -c",
     "server": "node api/index.js",
-    "start:dev": "NODE_ENV=development run-p server watch"
+    "start:dev": "NODE_ENV=development run-p server watch",
+    "start": "run-p server watch"
   },
   "repository": {
     "type": "git",
