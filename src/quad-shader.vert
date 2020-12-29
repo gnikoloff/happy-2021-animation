@@ -1,5 +1,3 @@
-precision highp float;
-
 attribute vec4 a_position;
 attribute vec2 a_uv;
 
