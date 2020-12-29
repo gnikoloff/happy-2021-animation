@@ -436,16 +436,16 @@ function init() {
 
   setInterval(() => {
     if (animationSwitchCounter % 2 === 0) {
-      linesData[0].targetX = innerWidth / 2 + innerWidth / 5
-      linesData[1].targetX = innerWidth / 2 - innerWidth / 5
-      linesData[2].targetX = innerWidth / 2 + innerWidth / 5
+      linesData[0].targetX = innerWidth / 2 + GLOBAL_STATE.innerWidth / 5
+      linesData[1].targetX = innerWidth / 2 - GLOBAL_STATE.innerWidth / 5
+      linesData[2].targetX = innerWidth / 2 + GLOBAL_STATE.innerWidth / 5
       linesData[0].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
       linesData[1].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
       linesData[2].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
     } else {
-      linesData[0].targetX = innerWidth / 2 - innerWidth / 5
-      linesData[1].targetX = innerWidth / 2 + innerWidth / 5
-      linesData[2].targetX = innerWidth / 2 - innerWidth / 5
+      linesData[0].targetX = innerWidth / 2 - GLOBAL_STATE.innerWidth / 5
+      linesData[1].targetX = innerWidth / 2 + GLOBAL_STATE.innerWidth / 5
+      linesData[2].targetX = innerWidth / 2 - GLOBAL_STATE.innerWidth / 5
       linesData[0].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
       linesData[1].angleTarget = -GLOBAL_STATE.lineAngle * Math.PI / 180
       linesData[2].angleTarget = GLOBAL_STATE.lineAngle * Math.PI / 180
@@ -515,7 +515,7 @@ function renderFrame(ts) {
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
   // ------- Render our scene -------
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+
   // gl.clearColor(GLOBAL_STATE.backgroundColor[0] / 255, GLOBAL_STATE.backgroundColor[1] / 255, GLOBAL_STATE.backgroundColor[2] / 255, 1.0)
   // gl.clear(gl.COLOR_BUFFER_BIT)
 
@@ -558,6 +558,7 @@ function renderFrame(ts) {
 
 
   {
+    // Render labels
     const drawMode = GLOBAL_STATE.debugMode ? gl.LINE_LOOP : gl.TRIANGLES
     vaoExtension.bindVertexArrayOES(labelVAO)
     gl.useProgram(labelProgram)
@@ -574,12 +575,14 @@ function renderFrame(ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  // Render lines
-  vaoExtension.bindVertexArrayOES(linesVao)
-  gl.useProgram(linesProgram)
-  instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
-  gl.useProgram(null)
-  vaoExtension.bindVertexArrayOES(null)
+  {
+    // Render lines
+    vaoExtension.bindVertexArrayOES(linesVao)
+    gl.useProgram(linesProgram)
+    instanceExtension.drawArraysInstancedANGLE(gl.LINES, 0, 2, GLOBAL_STATE.linesCount)
+    gl.useProgram(null)
+    vaoExtension.bindVertexArrayOES(null)
+  }
 
   // Issue next draw
   requestAnimationFrame(renderFrame)
@@ -672,11 +675,12 @@ function checkWall(i) {
     offsetsArray[i * 2] = GLOBAL_STATE.particleCount / 2
     velocitiesArray[i * 2] *= -GLOBAL_STATE.bounceScale
   }
-  if (offsetsArray[i * 2] + GLOBAL_STATE.radius / 2 > innerWidth) {
-    offsetsArray[i * 2] = innerWidth - GLOBAL_STATE.radius / 2
+  if (offsetsArray[i * 2] + GLOBAL_STATE.radius / 2 > GLOBAL_STATE.innerWidth) {
+    offsetsArray[i * 2] = GLOBAL_STATE.innerWidth - GLOBAL_STATE.radius / 2
     velocitiesArray[i * 2] *= -GLOBAL_STATE.bounceScale
   }
-  if (offsetsArray[i * 2 + 1] - GLOBAL_STATE.particleCount / 2 > innerHeight) {
+  if (offsetsArray[i * 2 + 1] - GLOBAL_STATE.particleCount / 2 > GLOBAL_STATE.innerHeight) {
+    offsetsArray[i * 2 + 0] = GLOBAL_STATE.innerWidth / 2 + (Math.random() * 2 - 1) * (GLOBAL_STATE.innerWidth / 2.2)
     offsetsArray[i * 2 + 1] = -GLOBAL_STATE.particleCount
     velocitiesArray[i * 2 + 1] = 0
   }
@@ -797,10 +801,15 @@ function checkCollision(i0, i1) {
 
 function resizeCanvas() {
   const dpr = 1
+
+  GLOBAL_STATE.innerWidth = innerWidth
+  GLOBAL_STATE.innerHeight = innerHeight
+
   canvas.width = GLOBAL_STATE.innerWidth * dpr
   canvas.height = GLOBAL_STATE.innerHeight * dpr
   canvas.style.width = `${GLOBAL_STATE.innerWidth}px`
   canvas.style.height = `${GLOBAL_STATE.innerHeight}px`
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
 }
 
 // ------- WebGL Helpers -------
