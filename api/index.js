@@ -10,7 +10,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'))
 })
 
-if (process.env.NODE_ENV === 'DEVELOPMENT') {
+if (process.env.NODE_ENV === 'development') {
   app.listen(PORT, () => console.log(`App is listening on ${PORT}`))
 }
 
