@@ -1,8 +1,10 @@
 # Happy New Year 2021 - Animation
 
-Ball physics animation written in WebGL to celebrate the end of 2020.
+Ball physics animation written in direct WebGL to celebrate the end of 2020.
 
-Uses hardware instancing with `ANGLE_instanced_arrays` for the metaballs and lines and post-processing for the gooey effect.
+- Uses hardware instancing with `ANGLE_instanced_arrays` for minimum draw calls
+- Supports VAOs with `OES_vertex_array_object` to organise buffer and attributes state and reduce WebGL calls
+- Post processing step using fullscreen quad for the metaball gooey effect
 
 url: [https://happy-new-2021.georgi-nikolov.com/](https://happy-new-2021.georgi-nikolov.com/)
 
