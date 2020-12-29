@@ -95,7 +95,7 @@ const labelWidth = GLOBAL_STATE.lineWidth
 const labelHeight = GLOBAL_STATE.lineWidth / 2
 const label0Texture = createLabelTexture('HAPPY')
 const label1Texture = createLabelTexture('NEW')
-const label2Texture = createLabelTexture('YEAR')
+const label2Texture = createLabelTexture('2021')
 
 // ------- Fullscreen quad program and geometry -------
 const planeProgram = makeProgram(gl, {
@@ -336,6 +336,18 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 document.addEventListener('DOMContentLoaded', init)
 
 function init() {
+  // Initialize info section
+  const infoSection = document.getElementById('info-container')
+  const infoButton = document.getElementById('info-toggle')
+  let infoSectionToggle = 0
+  infoButton.addEventListener('click', e => {
+    if (infoSectionToggle % 2 === 0) {
+      infoSection.classList.remove('closed')
+    } else {
+      infoSection.classList.add('closed')
+    }
+    infoSectionToggle++
+  })
   // Initialize dat.GUI
   gui.add(GLOBAL_STATE, 'debugMode').onChange(newVal => {
     gl.useProgram(labelProgram)

@@ -35,12 +35,123 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    a {
+      color: white;
+    }
+
+    h1 {
+      font-weight: 500;
+      font-size: 24px;
+    }
+
+    h2 {
+      font-weight: 500;
+      font-size: 18px;
+      margin: 6px 0 16px 0;
+    }
+
+    p {
+      line-height: 21px;
+      font-size: 14px;
+    }
+
+    button:hover {
+      cursor: pointer;
+    }
+
+    button:focus {
+      outline: 0;
+    }
+
+    #info-toggle {
+      margin-top: 24px;
+      width: 32px;
+      height: 32px;
+      background-image: url('assets/info-icon.svg');
+      background-color: transparent;
+      background-size: 120%;
+      background-repeat: no-repeat;
+      background-position: 50%;
+      border: none;
+    }
+
+    @media (min-width: 760px) {
+      #info-toggle {
+        margin-top: 0;
+        margin-bottom: 24px;
+      }
+    }
+
+    #info-container {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      z-index: 999;
+      padding: 24px;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+
+    @media (min-width: 760px) {
+      #info-container {
+        top: 0;
+        bottom: auto;
+        flex-direction: column;
+      }
+    }
+
+    #info-container:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: -1;
+      background: rgba(0, 0, 0, 0.68);
+      opacity: 1;
+      transition: opacity 0.175s ease-out;
+    }
+
+    #info-content {
+      opacity: 1;
+      transition: opacity 0.175s ease-out;
+      pointer-events: auto;
+      user-select: auto;
+    }
+
+    #info-container.closed #info-content {
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #info-container.closed:before {
+      opacity: 0;
     }
   </style>
 
 </head>
 
 <body>
+
+  <div id="info-container" class="closed">
+    <button id="info-toggle"></button>
+    <div id="info-content">
+      <h1>Happy new 2021!</h1>
+      <h2>2d metaballs physics animation with WebGL</h2>
+      <p>
+        Code & more info available
+        <a href="https://github.com/gnikoloff/happy-2021-animation">here</a>.
+        <br />
+        Made by <a href="https://twitter.com/georgiNikoloff">Georgi Nikolov</a>.
+      </p>
+    </div>
+  </div>
 
   <div id="canvas-container"></div>
 
