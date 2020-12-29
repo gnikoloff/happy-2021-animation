@@ -11,12 +11,18 @@ url: [https://happy-new-2021.georgi-nikolov.com/](https://happy-new-2021.georgi-
 
 ![Animation Preview Render](https://happy-new-2021.georgi-nikolov.com/assets/happy-new-year-site-preview-social.png)
 
-## Performance Test
-TODO
-
 ## References
 I studied 2D balls physics and collision detection and created this [Codepen collection](https://codepen.io/collection/nLvrwY) to document my progress.
 
 - [Collision detection (MDN Article)](https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Collision_detection)
 - [Foundation HTML5 Animation with JavaScript](https://lamberta.github.io/html5-animation/)
 
+## Performance Test
+
+- MacBook Pro (Retine, 13-inch, 2019) / 2,4 GHz Intel Core i5 / 8 GB 2133 MHz LPDDR3 / Intel Iris Plus Graphics 655 1536 MB
+  - Chrome 89 - average 0.1ms - 0.11ms
+  - Firefox 84 - average 0.02ms - 0.03ms
+  - Safari 13 - average 0.08ms - 0.1ms
+
+- iPhone 6s / iPhone 8 / iPhone 11 / iPad Mini
+  Average 0.08ms - 0.1ms
