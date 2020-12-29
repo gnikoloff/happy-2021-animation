@@ -84,6 +84,7 @@ let u_targetTexture
 let u_labelTexturesArray
 let u_labelDebugMode
 let u_ballDebugMode
+let u_quadResolution
 
 // ------- WebGL Extensions -------
 const webglDebugExtension = gl.getExtension('GMAN_debug_helper')
@@ -412,6 +413,10 @@ function init() {
   gl.useProgram(planeProgram)
   // Look up textures locations for fullscreen postprocessing quad
   u_targetTexture = gl.getUniformLocation(planeProgram, 'u_targetTexture')
+
+  u_quadResolution = gl.getUniformLocation(planeProgram, 'u_resolution')
+  gl.uniform2f(u_quadResolution, GLOBAL_STATE.innerWidth, GLOBAL_STATE.innerHeight)
+
   gl.useProgram(null)
 
   // ------- Initialize label uniforms -------
