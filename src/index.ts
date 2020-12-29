@@ -13,13 +13,15 @@ import linesFragmentShaderSource from './lines-shader.frag'
 import labelVertexShaderSource from './label-shader.vert'
 import labelFragmentShaderSource from './label-shader.frag'
 
+const isPortrait = innerWidth < innerHeight
+
 const GLOBAL_STATE = {
   innerWidth,
   innerHeight,
-  radius: 200,
-  particleCount: 100,
+  radius: isPortrait ? 120 : 200,
+  particleCount: isPortrait ? 150 : 100,
   linesCount: 3,
-  lineWidth: 300,
+  lineWidth: isPortrait ? 110 : 300,
   lineAngle: 20,
   linesSpring: 0.7,
   bounceScale: 0.8,
@@ -88,8 +90,8 @@ const instanceExtension = gl.getExtension('ANGLE_instanced_arrays')
 const vaoExtension = gl.getExtension('OES_vertex_array_object')
 
 // ------- Quad labels textures -------
-const labelWidth = 300
-const labelHeight = 150
+const labelWidth = GLOBAL_STATE.lineWidth
+const labelHeight = GLOBAL_STATE.lineWidth / 2
 const label0Texture = createLabelTexture('HAPPY')
 const label1Texture = createLabelTexture('NEW')
 const label2Texture = createLabelTexture('YEAR')
