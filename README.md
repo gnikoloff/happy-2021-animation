@@ -5,6 +5,7 @@ Ball physics animation written in direct WebGL to celebrate the end of 2020.
 - Uses hardware instancing with `ANGLE_instanced_arrays` for minimum draw calls
 - Supports VAOs with `OES_vertex_array_object` to organise buffer and attributes state and reduce WebGL calls
 - Post processing step using fullscreen quad for the metaball gooey effect
+- Custom animation and physics written from scratch
 
 url: [https://happy-new-2021.georgi-nikolov.com/](https://happy-new-2021.georgi-nikolov.com/)
 
