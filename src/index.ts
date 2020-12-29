@@ -23,6 +23,7 @@ const GLOBAL_STATE = {
   lineAngle: 20,
   linesSpring: 0.7,
   bounceScale: 0.8,
+  lineBounceScale: 0.35,
   gravity: 0.05,
   labelFontFamily: 'sans-serif',
   animationSwitchTimeout: 6000,
@@ -347,6 +348,14 @@ function init() {
   gui.add(GLOBAL_STATE, 'disablePostProcessing').listen().onChange(newVal => {
     GLOBAL_STATE.disablePostProcessing = newVal
   })
+  gui.add(GLOBAL_STATE, 'gravity').min(0.05).max(1).step(0.05)
+  gui.add(GLOBAL_STATE, 'lineAngle').min(15).max(35).step(1).onChange(newVal => {
+    linesData[0].angleTarget = newVal * Math.PI / 180
+    linesData[1].angleTarget = -newVal * Math.PI / 180
+    linesData[2].angleTarget = newVal * Math.PI / 180
+    GLOBAL_STATE.lineAngle = newVal
+  })
+  gui.add(GLOBAL_STATE, 'lineBounceScale').min(0.1).max(0.4).step(0.05)
 
   // Append canvas to DOM
   appContainer.appendChild(canvas)
@@ -668,7 +677,7 @@ function checkLine(lineIdx) {
         const x2 = cos * x + sin * y
 
         y1 = -ballRadius / 2
-        vy1 *= -0.35
+        vy1 *= -GLOBAL_STATE.lineBounceScale
 
         x = cos * x2 - sin * y1
         y = cos * y1 + sin * x2
