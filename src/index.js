@@ -687,15 +687,15 @@ function moveBall(dt, i) {
 }
 
 function checkWall(i) {
-  if (offsetsArray[i * 2 + 0] < GLOBAL_STATE.particleCount / 2) {
-    offsetsArray[i * 2] = GLOBAL_STATE.particleCount / 2
+  if (offsetsArray[i * 2 + 0] < GLOBAL_STATE.radius / 2) {
+    offsetsArray[i * 2] = GLOBAL_STATE.radius / 2
     velocitiesArray[i * 2] *= -GLOBAL_STATE.bounceScale
   }
   if (offsetsArray[i * 2] + GLOBAL_STATE.radius / 2 > GLOBAL_STATE.innerWidth) {
     offsetsArray[i * 2] = GLOBAL_STATE.innerWidth - GLOBAL_STATE.radius / 2
     velocitiesArray[i * 2] *= -GLOBAL_STATE.bounceScale
   }
-  if (offsetsArray[i * 2 + 1] - GLOBAL_STATE.particleCount / 2 > GLOBAL_STATE.innerHeight) {
+  if (offsetsArray[i * 2 + 1] - GLOBAL_STATE.radius / 2 > GLOBAL_STATE.innerHeight) {
     offsetsArray[i * 2 + 0] = GLOBAL_STATE.innerWidth / 2 + (Math.random() * 2 - 1) * (GLOBAL_STATE.innerWidth / 2.2)
     offsetsArray[i * 2 + 1] = -GLOBAL_STATE.particleCount
     velocitiesArray[i * 2 + 1] = 0
